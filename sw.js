@@ -1,9 +1,10 @@
-const CACHE_NAME = "loader-message-v10";
+const CACHE_NAME = "loader-message-v12";
 const APP_FILES = [
   "./",
   "./index.html",
   "./manifest.webmanifest",
-  "./icon.svg"
+  "./icon.svg",
+  "./icon-coupang-color.png"
 ];
 
 self.addEventListener("install", (event) => {
