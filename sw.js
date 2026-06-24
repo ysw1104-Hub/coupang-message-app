@@ -1,9 +1,10 @@
-const CACHE_NAME = "loader-message-v17";
+const CACHE_NAME = "loader-message-v18";
 const APP_FILES = [
   "./",
   "./index.html",
   "./manifest.webmanifest",
   "./icon.svg",
+  "./icon-192.png",
   "./icon-coupang-color.png"
 ];
 

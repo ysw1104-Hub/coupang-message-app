@@ -1,6 +1,7 @@
 {
   "name": "상차 메시지 정리",
   "short_name": "상차정리",
+  "id": "./index.html",
   "description": "상차 시간을 입력하면 카카오톡에 올릴 문구를 자동으로 정리합니다.",
   "start_url": "./index.html",
   "scope": "./",
@@ -10,10 +11,22 @@
   "orientation": "portrait",
   "icons": [
     {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
       "src": "icon-coupang-color.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "icon-coupang-color.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
   "shortcuts": [
