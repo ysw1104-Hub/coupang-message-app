@@ -276,7 +276,7 @@
     }
 
     .preview-head .toolbar {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .message-box {
@@ -462,7 +462,6 @@
           <div class="toolbar">
             <button class="btn primary" id="copyBtn" type="button">복사</button>
             <button class="btn green" id="shareBtn" type="button">카톡 공유</button>
-            <button class="btn" id="deviceShareBtn" type="button">기기 공유</button>
           </div>
         </div>
         <pre class="message-box" id="message"></pre>
@@ -515,7 +514,6 @@
       hint: document.querySelector("#hint"),
       copyBtn: document.querySelector("#copyBtn"),
       shareBtn: document.querySelector("#shareBtn"),
-      deviceShareBtn: document.querySelector("#deviceShareBtn"),
       resetBtn: document.querySelector("#resetBtn"),
       clearTimesBtn: document.querySelector("#clearTimesBtn"),
       kakaoKey: document.querySelector("#kakaoKey"),
@@ -1001,8 +999,6 @@
     });
 
     els.shareBtn.addEventListener("click", sharePlainText);
-
-    els.deviceShareBtn.addEventListener("click", sharePlainText);
 
     render();
 

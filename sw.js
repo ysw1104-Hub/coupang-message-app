@@ -1,4 +1,4 @@
-const CACHE_NAME = "loader-message-v15";
+const CACHE_NAME = "loader-message-v16";
 const APP_FILES = [
   "./",
   "./index.html",
