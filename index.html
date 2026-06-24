@@ -741,6 +741,21 @@
       }
     }
 
+    function isKakaoBrowser() {
+      return /KAKAOTALK/i.test(navigator.userAgent);
+    }
+
+    function isAndroid() {
+      return /Android/i.test(navigator.userAgent);
+    }
+
+    function openInChrome() {
+      const url = new URL(defaultShareUrl);
+      url.searchParams.set("from", "kakao");
+      const fallback = encodeURIComponent(url.href);
+      location.href = `intent://${url.host}${url.pathname}${url.search}#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${fallback};end`;
+    }
+
     async function sharePlainText() {
       const text = buildMessage();
       if (navigator.share) {
@@ -751,6 +766,17 @@
         } catch (error) {
           if (error.name === "AbortError") return;
         }
+      }
+
+      if (isKakaoBrowser()) {
+        if (isAndroid()) {
+          flash("카톡 안에서는 글자만 공유가 막혀 Chrome으로 다시 엽니다.");
+          setTimeout(openInChrome, 250);
+          return;
+        }
+
+        flash("카톡 안에서는 글자만 공유가 막혀요. Safari나 Chrome으로 열어 주세요.");
+        return;
       }
 
       try {
