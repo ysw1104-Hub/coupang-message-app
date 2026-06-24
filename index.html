@@ -130,6 +130,10 @@
       margin-bottom: 8px;
     }
 
+    .row.feeder-row {
+      grid-template-columns: minmax(0, 1fr) 104px;
+    }
+
     label {
       color: #2d333b;
       font-weight: 700;
@@ -775,6 +779,7 @@
     function makeRow(kind, item, index) {
       const row = document.createElement("div");
       row.className = "row";
+      if (kind === "feeders") row.classList.add("feeder-row");
 
       const name = document.createElement("input");
       name.value = item.name;
