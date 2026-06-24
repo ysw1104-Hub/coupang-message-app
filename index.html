@@ -440,7 +440,7 @@
           <textarea id="memo" placeholder="필요한 내용이 있으면 여기에 적으세요."></textarea>
         </div>
 
-        <div class="section">
+        <div class="section hidden" id="kakaoSettings" aria-hidden="true">
           <h2>카카오 공식 연결</h2>
           <div class="inline">
             <div>
@@ -472,6 +472,9 @@
   </main>
 
   <script>
+    const defaultKakaoKey = "e103b2caea080286a938ef1ffbfdf8a3";
+    const defaultShareUrl = "https://coupang1104.netlify.app";
+
     const defaults = {
       mode: "D1상차",
       title: "D1상차",
@@ -490,8 +493,8 @@
         { name: "선웅", time: "(도망)" }
       ],
       memo: "",
-      kakaoKey: "",
-      shareUrl: "https://coupang1104.netlify.app"
+      kakaoKey: defaultKakaoKey,
+      shareUrl: defaultShareUrl
     };
 
     const storageKey = "coupang-loader-message-v1";
@@ -604,8 +607,8 @@
         places: Array.isArray(value.places) && value.places.length ? value.places : structuredClone(defaults.places),
         feeders: Array.isArray(value.feeders) ? value.feeders : structuredClone(defaults.feeders),
         memo: value.memo || "",
-        kakaoKey: value.kakaoKey || "",
-        shareUrl: value.shareUrl || ""
+        kakaoKey: defaults.kakaoKey,
+        shareUrl: value.shareUrl || defaults.shareUrl
       };
     }
 
