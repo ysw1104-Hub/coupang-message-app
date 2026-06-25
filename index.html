@@ -55,7 +55,10 @@
     }
 
     header {
-      display: block;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: end;
       margin-bottom: 10px;
     }
 
@@ -77,6 +80,12 @@
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 8px;
       margin-top: 10px;
+    }
+
+    .top-actions {
+      display: grid;
+      grid-template-columns: repeat(2, 68px);
+      gap: 6px;
     }
 
     .grid {
@@ -106,6 +115,53 @@
     .editor,
     .preview {
       padding: 12px;
+    }
+
+    .history-panel {
+      margin-bottom: 12px;
+      padding: 12px;
+    }
+
+    .history-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .history-list {
+      display: grid;
+      gap: 6px;
+      max-height: 170px;
+      overflow-y: auto;
+    }
+
+    .history-item,
+    .history-empty {
+      min-height: 36px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fbfcfd;
+      font-size: 14px;
+    }
+
+    .history-item {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .history-time {
+      font-weight: 800;
+    }
+
+    .history-mode {
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
     }
 
     .section {
@@ -506,6 +562,14 @@
         padding: 10px 8px 22px;
       }
 
+      header {
+        grid-template-columns: 1fr;
+      }
+
+      .top-actions {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
       .editor,
       .preview {
         padding: 10px;
@@ -562,7 +626,21 @@
         <h1>상차 메시지 정리</h1>
         <p class="sub">시간만 채우면 카톡에 올릴 문구가 바로 정리됩니다.</p>
       </div>
+      <div class="top-actions" aria-label="공용 저장 관리">
+        <button class="btn small" id="resetBtn" type="button">리셋</button>
+        <button class="btn small" id="historyBtn" type="button">기록</button>
+      </div>
     </header>
+
+    <section class="panel history-panel hidden" id="historyPanel" aria-label="카톡 공유 기록">
+      <div class="history-head">
+        <h2>공유 기록</h2>
+        <button class="btn small" id="historyRefreshBtn" type="button">새로고침</button>
+      </div>
+      <div class="history-list" id="historyList">
+        <div class="history-empty">기록을 불러오는 중입니다.</div>
+      </div>
+    </section>
 
     <div class="grid">
       <section class="panel preview" aria-label="생성된 메시지">
@@ -687,6 +765,11 @@
       hint: document.querySelector("#hint"),
       copyBtn: document.querySelector("#copyBtn"),
       shareBtn: document.querySelector("#shareBtn"),
+      resetBtn: document.querySelector("#resetBtn"),
+      historyBtn: document.querySelector("#historyBtn"),
+      historyRefreshBtn: document.querySelector("#historyRefreshBtn"),
+      historyPanel: document.querySelector("#historyPanel"),
+      historyList: document.querySelector("#historyList"),
       kakaoKey: document.querySelector("#kakaoKey"),
       shareUrl: document.querySelector("#shareUrl")
     };
@@ -895,14 +978,106 @@
       if (!canUseRemoteStorage()) return;
 
       try {
-        await fetch(shareLogUrl, {
+        const response = await fetch(shareLogUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ mode: state.mode, message })
         });
+        if (!response.ok) throw new Error("Share log failed");
+        if (!els.historyPanel.classList.contains("hidden")) loadShareHistory({ silent: true });
       } catch {
         // 기록 실패가 공유 자체를 막으면 안 됩니다.
       }
+    }
+
+    function formatHistoryTime(value) {
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return "시간 없음";
+
+      return new Intl.DateTimeFormat("ko-KR", {
+        timeZone: "Asia/Seoul",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false
+      }).format(date);
+    }
+
+    function renderShareHistory(entries) {
+      const safeEntries = Array.isArray(entries) ? entries.slice(0, 40) : [];
+
+      if (!safeEntries.length) {
+        els.historyList.replaceChildren(Object.assign(document.createElement("div"), {
+          className: "history-empty",
+          textContent: "아직 카톡 공유 기록이 없습니다."
+        }));
+        return;
+      }
+
+      const nodes = safeEntries.map((entry) => {
+        const row = document.createElement("div");
+        row.className = "history-item";
+
+        const time = document.createElement("div");
+        time.className = "history-time";
+        time.textContent = formatHistoryTime(entry.createdAt);
+
+        const mode = document.createElement("div");
+        mode.className = "history-mode";
+        mode.textContent = entry.mode || "";
+
+        row.append(time, mode);
+        return row;
+      });
+
+      els.historyList.replaceChildren(...nodes);
+    }
+
+    async function loadShareHistory(options = {}) {
+      if (!canUseRemoteStorage()) {
+        renderShareHistory([]);
+        if (!options.silent) flash("웹주소에서 열어야 기록을 볼 수 있습니다.");
+        return;
+      }
+
+      if (!options.silent) {
+        els.historyList.replaceChildren(Object.assign(document.createElement("div"), {
+          className: "history-empty",
+          textContent: "기록을 불러오는 중입니다."
+        }));
+      }
+
+      try {
+        const response = await fetch(shareLogUrl, { cache: "no-store" });
+        if (!response.ok) throw new Error("History load failed");
+        const data = await response.json();
+        renderShareHistory(data.entries);
+      } catch {
+        els.historyList.replaceChildren(Object.assign(document.createElement("div"), {
+          className: "history-empty",
+          textContent: "기록을 불러오지 못했습니다."
+        }));
+      }
+    }
+
+    function toggleShareHistory() {
+      const willOpen = els.historyPanel.classList.contains("hidden");
+      els.historyPanel.classList.toggle("hidden", !willOpen);
+      els.historyBtn.classList.toggle("primary", willOpen);
+      if (willOpen) loadShareHistory();
+    }
+
+    async function resetSharedState() {
+      if (!confirm("공용 저장을 기본값으로 돌릴까요? 모두에게 같은 초기 화면이 보입니다.")) return;
+
+      state = structuredClone(defaults);
+      remoteUpdatedAt = "";
+      render();
+      window.clearTimeout(remoteSaveTimer);
+      await saveRemoteState();
+      flash("공용 저장을 기본값으로 돌렸습니다.");
     }
 
     function formatTime(raw) {
@@ -1132,10 +1307,11 @@
 
     async function sharePlainText() {
       const text = buildMessage();
+      await recordShareLog(text);
+
       if (navigator.share) {
         try {
           await navigator.share({ text });
-          await recordShareLog(text);
           flash("공유창을 열었습니다. 카카오톡을 선택하세요.");
           return;
         } catch (error) {
@@ -1477,6 +1653,9 @@
     });
 
     els.shareBtn.addEventListener("click", sharePlainText);
+    els.resetBtn.addEventListener("click", resetSharedState);
+    els.historyBtn.addEventListener("click", toggleShareHistory);
+    els.historyRefreshBtn.addEventListener("click", () => loadShareHistory());
 
     render();
     startRemoteSync();
