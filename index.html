@@ -264,10 +264,10 @@
     }
 
     .mixed-actions {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: flex-end;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 6px;
+      width: 100%;
     }
 
     .number-grid {
@@ -522,10 +522,6 @@
         <div class="section hidden" id="mixedDetailSection">
           <div class="section-title">
             <h2>혼적 번호</h2>
-            <div class="toolbar">
-              <button class="btn small" id="nextMixedLineBtn" type="button">추가 혼적</button>
-              <button class="btn small" id="clearMixedBtn" type="button">선택 해제</button>
-            </div>
           </div>
           <div class="mixed-groups" id="mixedGroups"></div>
         </div>
@@ -612,8 +608,6 @@
       mixedStatusSection: document.querySelector("#mixedStatusSection"),
       mixedDetailSection: document.querySelector("#mixedDetailSection"),
       mixedGroups: document.querySelector("#mixedGroups"),
-      nextMixedLineBtn: document.querySelector("#nextMixedLineBtn"),
-      clearMixedBtn: document.querySelector("#clearMixedBtn"),
       loadSection: document.querySelector("#loadSection"),
       feederSection: document.querySelector("#feederSection"),
       places: document.querySelector("#places"),
@@ -806,6 +800,20 @@
       renderRows();
       update();
       flash(`${range.label}번대 전체를 추가했습니다.`);
+    }
+
+    function clearWholeRange(range) {
+      const rangeSet = new Set(rangeNumbers(range));
+      const previousLine = state.currentMixedLine;
+      const lines = state.mixedLines
+        .map((line) => line.filter((number) => !rangeSet.has(number)))
+        .filter((line) => line.length);
+
+      state.mixedLines = lines.length ? lines : [[]];
+      state.currentMixedLine = Math.min(previousLine, state.mixedLines.length - 1);
+      renderRows();
+      update();
+      flash(`${range.label}번대 선택을 지웠습니다.`);
     }
 
     function buildMessage() {
@@ -1124,21 +1132,24 @@
       const actions = document.createElement("div");
       actions.className = "mixed-actions";
 
-      if (range.label !== "100") {
-        const addLine = document.createElement("button");
-        addLine.className = "btn small";
-        addLine.type = "button";
-        addLine.textContent = "추가 혼적";
-        addLine.dataset.addLine = "true";
-        actions.append(addLine);
-      }
+      const addLine = document.createElement("button");
+      addLine.className = "btn small";
+      addLine.type = "button";
+      addLine.textContent = "추가 혼적";
+      addLine.dataset.addLine = "true";
 
       const selectAll = document.createElement("button");
       selectAll.className = "btn small";
       selectAll.type = "button";
       selectAll.textContent = "전체선택";
       selectAll.dataset.selectRange = range.label;
-      actions.append(selectAll);
+
+      const clearRange = document.createElement("button");
+      clearRange.className = "btn small";
+      clearRange.type = "button";
+      clearRange.textContent = "선택해제";
+      clearRange.dataset.clearRange = range.label;
+      actions.append(addLine, selectAll, clearRange);
 
       title.append(heading, actions);
 
@@ -1227,6 +1238,13 @@
         return;
       }
 
+      const clearRangeButton = event.target.closest("button[data-clear-range]");
+      if (clearRangeButton) {
+        const range = mixedRanges.find((item) => item.label === clearRangeButton.dataset.clearRange);
+        if (range) clearWholeRange(range);
+        return;
+      }
+
       const rangeButton = event.target.closest("button[data-select-range]");
       if (!rangeButton) return;
 
@@ -1234,16 +1252,6 @@
       if (!range) return;
 
       selectWholeRange(range);
-    });
-
-    els.nextMixedLineBtn.addEventListener("click", addMixedLine);
-
-    els.clearMixedBtn.addEventListener("click", () => {
-      state.mixedLines = [[]];
-      state.currentMixedLine = 0;
-      renderRows();
-      update();
-      flash("혼적 번호 선택을 지웠습니다.");
     });
 
     els.memo.addEventListener("input", () => {
