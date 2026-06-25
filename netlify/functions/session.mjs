@@ -1,7 +1,7 @@
 import { getStore } from "@netlify/blobs";
 
 const key = "edit-session";
-const ttlMs = 15 * 1000;
+const ttlMs = 6 * 1000;
 
 const jsonHeaders = {
   "Content-Type": "application/json; charset=utf-8",
