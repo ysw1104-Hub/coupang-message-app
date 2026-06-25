@@ -124,6 +124,10 @@
       z-index: 20;
     }
 
+    body.read-only-mode .preview {
+      position: static;
+    }
+
     .editor,
     .preview {
       padding: 12px;
@@ -518,6 +522,14 @@
       font-size: 16px;
     }
 
+    body.read-only-mode .message-box {
+      height: auto;
+      min-height: calc(100vh - 162px);
+      max-height: none;
+      overflow-y: visible;
+      font-size: 17px;
+    }
+
     .hint {
       min-height: 22px;
       margin-top: 10px;
@@ -627,6 +639,12 @@
       .message-box {
         height: 128px;
         font-size: 16px;
+      }
+
+      body.read-only-mode .message-box {
+        height: auto;
+        min-height: calc(100vh - 146px);
+        font-size: 17px;
       }
     }
   </style>
@@ -934,6 +952,7 @@
       hasEditLock = owner || !canUseRemoteStorage();
       const readOnly = canUseRemoteStorage() && !hasEditLock;
 
+      document.body.classList.toggle("read-only-mode", readOnly);
       els.editorPanel.classList.toggle("hidden", readOnly);
       els.topActions.classList.toggle("hidden", readOnly);
       els.previewHead.classList.toggle("hidden", readOnly);
