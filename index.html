@@ -93,6 +93,12 @@
       box-shadow: var(--shadow);
     }
 
+    .preview {
+      position: sticky;
+      top: 8px;
+      z-index: 20;
+    }
+
     .editor,
     .preview {
       padding: 12px;
@@ -393,13 +399,15 @@
 
     .message-box {
       width: 100%;
-      min-height: 240px;
+      min-height: 150px;
+      max-height: 34vh;
       margin: 0;
       padding: 16px;
       border: 1px solid var(--line);
       border-radius: 8px;
       background: #fbfcfd;
       white-space: pre-wrap;
+      overflow-y: auto;
       line-height: 1.6;
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
       font-size: 16px;
@@ -500,7 +508,8 @@
       }
 
       .message-box {
-        min-height: 220px;
+        min-height: 128px;
+        max-height: 30vh;
         font-size: 16px;
       }
     }
@@ -516,6 +525,18 @@
     </header>
 
     <div class="grid">
+      <section class="panel preview" aria-label="생성된 메시지">
+        <div class="preview-head">
+          <h2>카톡에 올릴 문구</h2>
+          <div class="toolbar">
+            <button class="btn primary" id="copyBtn" type="button">복사</button>
+            <button class="btn green" id="shareBtn" type="button">카톡 공유</button>
+          </div>
+        </div>
+        <pre class="message-box" id="message"></pre>
+        <div class="hint" id="hint"></div>
+      </section>
+
       <section class="panel editor" aria-label="메시지 입력">
         <div class="section">
           <div class="inline">
@@ -580,17 +601,6 @@
         </div>
       </section>
 
-      <section class="panel preview" aria-label="생성된 메시지">
-        <div class="preview-head">
-          <h2>카톡에 올릴 문구</h2>
-          <div class="toolbar">
-            <button class="btn primary" id="copyBtn" type="button">복사</button>
-            <button class="btn green" id="shareBtn" type="button">카톡 공유</button>
-          </div>
-        </div>
-        <pre class="message-box" id="message"></pre>
-        <div class="hint" id="hint"></div>
-      </section>
     </div>
   </main>
 
@@ -642,7 +652,7 @@
 
     const mixedRanges = [
       { label: "100", start: 101, end: 118 },
-      { label: "200", start: 201, end: 218 },
+      { label: "200", start: 201, end: 219 },
       { label: "300", start: 301, end: 314 }
     ];
     const maxMixedLineCount = 10;
