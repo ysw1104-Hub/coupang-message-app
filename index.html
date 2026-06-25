@@ -661,8 +661,8 @@
         { name: "익산", time: "" }
       ],
       feeders: [
-        { name: "종훈 진국.상훈", time: "" },
-        { name: "선웅", time: "" }
+        { name: "", time: "" },
+        { name: "", time: "" }
       ],
       memo: "",
       kakaoKey: defaultKakaoKey,
@@ -670,6 +670,8 @@
     };
 
     const storageKey = "coupang-loader-message-v1";
+    const remoteStateUrl = "/api/state";
+    const shareLogUrl = "/api/share-log";
     const els = {
       modeToggle: document.querySelector("#modeToggle"),
       mixedToggle: document.querySelector("#mixedToggle"),
@@ -696,6 +698,10 @@
     ];
     const placeColorClasses = ["place-blue", "place-green", "place-red", "place-yellow", "place-purple"];
     const maxMixedLineCount = 10;
+    let remoteHydrating = true;
+    let applyingRemoteState = false;
+    let remoteSaveTimer = 0;
+    let remoteUpdatedAt = "";
     let state = loadState();
 
     function rangeNumbers(range) {
@@ -759,9 +765,9 @@
       const savedOldDefaults =
         feeders.length === 2 &&
         feeders[0]?.name === "종훈 진국.상훈" &&
-        feeders[0]?.time === "22시" &&
+        (feeders[0]?.time === "22시" || feeders[0]?.time === "") &&
         feeders[1]?.name === "선웅" &&
-        feeders[1]?.time === "(도망)";
+        (feeders[1]?.time === "(도망)" || feeders[1]?.time === "");
 
       return savedOldDefaults ? structuredClone(defaults.feeders) : feeders;
     }
@@ -797,8 +803,106 @@
       };
     }
 
-    function saveState() {
+    function canUseRemoteStorage() {
+      return location.protocol === "http:" || location.protocol === "https:";
+    }
+
+    function sharedStatePayload() {
+      return {
+        mode: state.mode,
+        title: state.title,
+        mixed: state.mixed,
+        mixedLines: state.mixedLines,
+        currentMixedLine: state.currentMixedLine,
+        places: state.places,
+        feeders: state.feeders,
+        memo: state.memo
+      };
+    }
+
+    function saveState(options = {}) {
       localStorage.setItem(storageKey, JSON.stringify(state));
+      if (options.remote === false || remoteHydrating || applyingRemoteState) return;
+      scheduleRemoteSave();
+    }
+
+    function scheduleRemoteSave() {
+      if (!canUseRemoteStorage()) return;
+      window.clearTimeout(remoteSaveTimer);
+      remoteSaveTimer = window.setTimeout(saveRemoteState, 700);
+    }
+
+    async function saveRemoteState() {
+      if (!canUseRemoteStorage()) return;
+
+      try {
+        const response = await fetch(remoteStateUrl, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ state: sharedStatePayload() })
+        });
+        if (!response.ok) throw new Error("Remote save failed");
+
+        const data = await response.json();
+        remoteUpdatedAt = data.updatedAt || remoteUpdatedAt;
+      } catch {
+        flash("공용 저장이 잠시 안 됩니다. 이 기기에는 저장됐습니다.");
+      }
+    }
+
+    async function loadRemoteState(options = {}) {
+      if (!canUseRemoteStorage()) {
+        remoteHydrating = false;
+        return;
+      }
+
+      try {
+        const response = await fetch(remoteStateUrl, { cache: "no-store" });
+        if (!response.ok) throw new Error("Remote load failed");
+
+        const data = await response.json();
+        if (!data.state) {
+          remoteHydrating = false;
+          scheduleRemoteSave();
+          return;
+        }
+
+        if (data.updatedAt && data.updatedAt === remoteUpdatedAt) return;
+
+        applyingRemoteState = true;
+        state = normalize({ ...state, ...data.state });
+        remoteUpdatedAt = data.updatedAt || remoteUpdatedAt;
+        render();
+        applyingRemoteState = false;
+        localStorage.setItem(storageKey, JSON.stringify(state));
+        if (!options.silent) flash("공용 저장을 불러왔습니다.");
+      } catch {
+        if (!options.silent) flash("공용 저장 연결 전까지 이 기기 안에만 저장됩니다.");
+      } finally {
+        remoteHydrating = false;
+        applyingRemoteState = false;
+      }
+    }
+
+    function startRemoteSync() {
+      loadRemoteState();
+      window.setInterval(() => {
+        if (!document.hidden) loadRemoteState({ silent: true });
+      }, 7000);
+    }
+
+    async function recordShareLog(message) {
+      if (!canUseRemoteStorage()) return;
+
+      try {
+        await fetch(shareLogUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mode: state.mode, message })
+        });
+      } catch {
+        // 기록 실패가 공유 자체를 막으면 안 됩니다.
+      }
     }
 
     function formatTime(raw) {
@@ -1005,6 +1109,7 @@
             webUrl: url
           }
         });
+        recordShareLog(text);
       } catch (error) {
         flash("카카오 공유를 열지 못했습니다. 키와 등록 도메인을 확인하세요.");
       }
@@ -1030,6 +1135,7 @@
       if (navigator.share) {
         try {
           await navigator.share({ text });
+          await recordShareLog(text);
           flash("공유창을 열었습니다. 카카오톡을 선택하세요.");
           return;
         } catch (error) {
@@ -1373,6 +1479,7 @@
     els.shareBtn.addEventListener("click", sharePlainText);
 
     render();
+    startRemoteSync();
 
     async function clearOldAppCache() {
       if ("serviceWorker" in navigator) {
