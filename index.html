@@ -854,6 +854,7 @@
     const sessionUrl = "/api/session";
     const clientIdKey = "coupang-loader-client-id";
     const sessionCheckMs = 3000;
+    const waitingSyncMs = 2000;
     const els = {
       topActions: document.querySelector(".top-actions"),
       lockStatus: document.querySelector("#lockStatus"),
@@ -1032,6 +1033,7 @@
         setHistoryView(false, { silent: true });
         els.lockStatus.textContent = message;
         els.lockStatus.classList.remove("hidden");
+        if (!document.hidden) loadRemoteState({ silent: true });
         return;
       }
 
@@ -1119,8 +1121,8 @@
     function startRemoteSync() {
       loadRemoteState();
       window.setInterval(() => {
-        if (!document.hidden) loadRemoteState({ silent: true });
-      }, 7000);
+        if (!document.hidden && !hasEditLock) loadRemoteState({ silent: true });
+      }, waitingSyncMs);
     }
 
     async function requestEditSession(action) {
@@ -1153,13 +1155,17 @@
       }
     }
 
-    function releaseEditSession() {
+    function releaseEditSession(options = {}) {
       if (!canUseRemoteStorage() || !hasEditLock) return;
 
       const payload = JSON.stringify({ action: "release", clientId });
+      if (options.local !== false) {
+        setEditLock(false, "편집 권한을 확인하는 중입니다.");
+      }
+
       if (navigator.sendBeacon) {
-        navigator.sendBeacon(sessionUrl, new Blob([payload], { type: "application/json" }));
-        return;
+        const queued = navigator.sendBeacon(sessionUrl, new Blob([payload], { type: "application/json" }));
+        if (queued) return;
       }
 
       fetch(sessionUrl, {
@@ -1179,12 +1185,21 @@
       setEditLock(false, "편집 권한을 확인하는 중입니다.");
       refreshEditSession("acquire");
       window.setInterval(() => {
+        if (document.hidden) return;
         refreshEditSession(hasEditLock ? "heartbeat" : "acquire");
       }, sessionCheckMs);
       document.addEventListener("visibilitychange", () => {
-        if (!document.hidden) refreshEditSession(hasEditLock ? "heartbeat" : "acquire");
+        if (document.hidden) {
+          releaseEditSession();
+          return;
+        }
+
+        loadRemoteState({ silent: true });
+        refreshEditSession("acquire");
       });
-      window.addEventListener("pagehide", releaseEditSession);
+      window.addEventListener("pagehide", () => releaseEditSession({ local: false }));
+      window.addEventListener("beforeunload", () => releaseEditSession({ local: false }));
+      document.addEventListener("freeze", () => releaseEditSession({ local: false }));
     }
 
     async function recordShareLog(message) {
