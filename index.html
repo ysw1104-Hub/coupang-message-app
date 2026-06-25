@@ -641,6 +641,10 @@
       return state.mode === "D1 혼적" || state.mode === "D2 혼적";
     }
 
+    function showsFeeders() {
+      return state.mode === "D1상차";
+    }
+
     function mixedNumbersFromText(text) {
       const validNumbers = new Set(mixedRanges.flatMap((range) => {
         const numbers = [];
@@ -786,19 +790,21 @@
         if (name && time) lines.push(`${name} ${time}`);
       });
 
-      const feederLines = state.feeders
-        .map((item) => {
-          const name = item.name.trim();
-          const time = formatTime(item.time);
-          if (!name && !time) return "";
-          return [name, time].filter(Boolean).join(" ");
-        })
-        .filter(Boolean);
+      if (showsFeeders()) {
+        const feederLines = state.feeders
+          .map((item) => {
+            const name = item.name.trim();
+            const time = formatTime(item.time);
+            if (!name && !time) return "";
+            return [name, time].filter(Boolean).join(" ");
+          })
+          .filter(Boolean);
 
-      if (feederLines.length) {
-        lines.push("");
-        lines.push("피더 휴게");
-        lines.push(...feederLines);
+        if (feederLines.length) {
+          lines.push("");
+          lines.push("피더 휴게");
+          lines.push(...feederLines);
+        }
       }
 
       const memo = state.memo.trim();
@@ -931,7 +937,7 @@
       els.mixedStatusSection.classList.toggle("hidden", isMixedMode());
       els.mixedDetailSection.classList.toggle("hidden", !isMixedMode());
       els.loadSection.classList.toggle("hidden", isMixedMode());
-      els.feederSection.classList.toggle("hidden", isMixedMode());
+      els.feederSection.classList.toggle("hidden", !showsFeeders());
     }
 
     function makePlaceRow(item, index) {
