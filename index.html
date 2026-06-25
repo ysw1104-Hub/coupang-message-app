@@ -88,6 +88,18 @@
       gap: 6px;
     }
 
+    .lock-status {
+      margin-bottom: 10px;
+      padding: 10px 12px;
+      border: 1px solid #facc15;
+      border-radius: 8px;
+      background: #fff8db;
+      color: #5f4400;
+      font-size: 14px;
+      font-weight: 800;
+      line-height: 1.35;
+    }
+
     .grid {
       display: grid;
       grid-template-columns: 1fr;
@@ -351,7 +363,7 @@
     }
 
     .hidden {
-      display: none;
+      display: none !important;
     }
 
     .mixed-groups {
@@ -632,6 +644,8 @@
       </div>
     </header>
 
+    <div class="lock-status hidden" id="lockStatus" role="status" aria-live="polite"></div>
+
     <section class="panel history-panel hidden" id="historyPanel" aria-label="카톡 공유 기록">
       <div class="history-head">
         <h2>공유 기록</h2>
@@ -750,7 +764,11 @@
     const storageKey = "coupang-loader-message-v1";
     const remoteStateUrl = "/api/state";
     const shareLogUrl = "/api/share-log";
+    const sessionUrl = "/api/session";
+    const clientIdKey = "coupang-loader-client-id";
     const els = {
+      topActions: document.querySelector(".top-actions"),
+      lockStatus: document.querySelector("#lockStatus"),
       modeToggle: document.querySelector("#modeToggle"),
       mixedToggle: document.querySelector("#mixedToggle"),
       mixedStatusSection: document.querySelector("#mixedStatusSection"),
@@ -763,6 +781,8 @@
       memo: document.querySelector("#memo"),
       message: document.querySelector("#message"),
       hint: document.querySelector("#hint"),
+      previewHead: document.querySelector(".preview-head"),
+      editorPanel: document.querySelector(".editor"),
       copyBtn: document.querySelector("#copyBtn"),
       shareBtn: document.querySelector("#shareBtn"),
       resetBtn: document.querySelector("#resetBtn"),
@@ -785,7 +805,10 @@
     let applyingRemoteState = false;
     let remoteSaveTimer = 0;
     let remoteUpdatedAt = "";
+    let hasEditLock = false;
+    let checkingSession = false;
     let state = loadState();
+    const clientId = getClientId();
 
     function rangeNumbers(range) {
       const numbers = [];
@@ -890,6 +913,43 @@
       return location.protocol === "http:" || location.protocol === "https:";
     }
 
+    function getClientId() {
+      const randomId = () => {
+        if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+        return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      };
+
+      try {
+        const saved = sessionStorage.getItem(clientIdKey);
+        if (saved) return saved;
+        const next = randomId();
+        sessionStorage.setItem(clientIdKey, next);
+        return next;
+      } catch {
+        return randomId();
+      }
+    }
+
+    function setEditLock(owner, message = "이미 작업 중에 있습니다.") {
+      hasEditLock = owner || !canUseRemoteStorage();
+      const readOnly = canUseRemoteStorage() && !hasEditLock;
+
+      els.editorPanel.classList.toggle("hidden", readOnly);
+      els.topActions.classList.toggle("hidden", readOnly);
+      els.previewHead.classList.toggle("hidden", readOnly);
+
+      if (readOnly) {
+        els.historyPanel.classList.add("hidden");
+        els.historyBtn.classList.remove("primary");
+        els.lockStatus.textContent = message;
+        els.lockStatus.classList.remove("hidden");
+        return;
+      }
+
+      els.lockStatus.classList.add("hidden");
+      els.lockStatus.textContent = "";
+    }
+
     function sharedStatePayload() {
       return {
         mode: state.mode,
@@ -905,18 +965,18 @@
 
     function saveState(options = {}) {
       localStorage.setItem(storageKey, JSON.stringify(state));
-      if (options.remote === false || remoteHydrating || applyingRemoteState) return;
+      if (options.remote === false || remoteHydrating || applyingRemoteState || !hasEditLock) return;
       scheduleRemoteSave();
     }
 
     function scheduleRemoteSave() {
-      if (!canUseRemoteStorage()) return;
+      if (!canUseRemoteStorage() || !hasEditLock) return;
       window.clearTimeout(remoteSaveTimer);
       remoteSaveTimer = window.setTimeout(saveRemoteState, 700);
     }
 
     async function saveRemoteState() {
-      if (!canUseRemoteStorage()) return;
+      if (!canUseRemoteStorage() || !hasEditLock) return;
 
       try {
         const response = await fetch(remoteStateUrl, {
@@ -972,6 +1032,70 @@
       window.setInterval(() => {
         if (!document.hidden) loadRemoteState({ silent: true });
       }, 7000);
+    }
+
+    async function requestEditSession(action) {
+      const response = await fetch(sessionUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, clientId }),
+        keepalive: action === "release"
+      });
+      if (!response.ok) throw new Error("Session request failed");
+      return response.json();
+    }
+
+    async function refreshEditSession(action = "acquire") {
+      if (!canUseRemoteStorage()) {
+        setEditLock(true);
+        return;
+      }
+
+      if (checkingSession) return;
+      checkingSession = true;
+
+      try {
+        const data = await requestEditSession(action);
+        setEditLock(Boolean(data.owner));
+      } catch {
+        setEditLock(false, "작업 상태를 확인하지 못했습니다. 잠시 후 다시 확인합니다.");
+      } finally {
+        checkingSession = false;
+      }
+    }
+
+    function releaseEditSession() {
+      if (!canUseRemoteStorage() || !hasEditLock) return;
+
+      const payload = JSON.stringify({ action: "release", clientId });
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon(sessionUrl, new Blob([payload], { type: "application/json" }));
+        return;
+      }
+
+      fetch(sessionUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+        keepalive: true
+      }).catch(() => {});
+    }
+
+    function startEditSession() {
+      if (!canUseRemoteStorage()) {
+        setEditLock(true);
+        return;
+      }
+
+      setEditLock(false, "편집 권한을 확인하는 중입니다.");
+      refreshEditSession("acquire");
+      window.setInterval(() => {
+        refreshEditSession(hasEditLock ? "heartbeat" : "acquire");
+      }, 10000);
+      document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) refreshEditSession(hasEditLock ? "heartbeat" : "acquire");
+      });
+      window.addEventListener("pagehide", releaseEditSession);
     }
 
     async function recordShareLog(message) {
@@ -1070,6 +1194,11 @@
     }
 
     async function resetSharedState() {
+      if (!hasEditLock) {
+        flash("이미 작업 중이라 리셋할 수 없습니다.");
+        return;
+      }
+
       if (!confirm("공용 저장을 기본값으로 돌릴까요? 모두에게 같은 초기 화면이 보입니다.")) return;
 
       state = structuredClone(defaults);
@@ -1659,6 +1788,7 @@
 
     render();
     startRemoteSync();
+    startEditSession();
 
     async function clearOldAppCache() {
       if ("serviceWorker" in navigator) {
