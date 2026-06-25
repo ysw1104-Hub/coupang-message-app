@@ -101,6 +101,11 @@
       white-space: pre-line;
     }
 
+    .admin-mode-btn {
+      width: 100%;
+      margin: -2px 0 10px;
+    }
+
     .grid {
       display: grid;
       grid-template-columns: 1fr;
@@ -390,6 +395,17 @@
     select:focus {
       border-color: var(--accent);
       box-shadow: 0 0 0 3px rgba(35, 100, 170, 0.13);
+    }
+
+    .editor input[readonly],
+    .editor textarea[readonly] {
+      background: #f8fafc;
+      color: var(--ink);
+    }
+
+    .editor button:disabled {
+      cursor: default;
+      opacity: 0.58;
     }
 
     textarea {
@@ -738,6 +754,7 @@
     </header>
 
     <div class="lock-status hidden" id="lockStatus" role="status" aria-live="polite"></div>
+    <button class="btn small admin-mode-btn hidden" id="adminModeBtn" type="button">관리자 모드</button>
 
     <section class="panel history-panel hidden" id="historyPanel" aria-label="카톡 공유 기록">
       <div class="history-head">
@@ -861,9 +878,11 @@
     const clientIdKey = "coupang-loader-client-id";
     const sessionCheckMs = 1500;
     const waitingSyncMs = 1000;
+    const adminPassword = "1104";
     const els = {
       topActions: document.querySelector(".top-actions"),
       lockStatus: document.querySelector("#lockStatus"),
+      adminModeBtn: document.querySelector("#adminModeBtn"),
       modeToggle: document.querySelector("#modeToggle"),
       mixedToggle: document.querySelector("#mixedToggle"),
       mixedStatusSection: document.querySelector("#mixedStatusSection"),
@@ -902,6 +921,7 @@
     let remoteSaveTimer = 0;
     let remoteUpdatedAt = "";
     let hasEditLock = false;
+    let adminViewMode = false;
     let checkingSession = false;
     let state = loadState();
     const clientId = getClientId();
@@ -1026,18 +1046,37 @@
       }
     }
 
+    function applyEditorInteractivity() {
+      const viewOnly = canUseRemoteStorage() && !hasEditLock && adminViewMode;
+
+      els.editorPanel.querySelectorAll("input, textarea").forEach((control) => {
+        control.readOnly = viewOnly;
+      });
+
+      els.editorPanel.querySelectorAll("button, select").forEach((control) => {
+        control.disabled = viewOnly;
+      });
+    }
+
     function setEditLock(owner, message = "이미 작업 중에 있습니다.\n작업이 끝날 때까지 기다려주십시오.") {
       hasEditLock = owner || !canUseRemoteStorage();
-      const readOnly = canUseRemoteStorage() && !hasEditLock;
+      if (hasEditLock) adminViewMode = false;
 
-      document.body.classList.toggle("read-only-mode", readOnly);
-      els.editorPanel.classList.toggle("hidden", readOnly);
+      const readOnly = canUseRemoteStorage() && !hasEditLock;
+      const adminView = readOnly && adminViewMode;
+
+      document.body.classList.toggle("read-only-mode", readOnly && !adminView);
+      document.body.classList.toggle("admin-view-mode", adminView);
+      els.editorPanel.classList.toggle("hidden", readOnly && !adminView);
       els.topActions.classList.toggle("hidden", readOnly);
       els.previewHead.classList.toggle("hidden", readOnly);
+      els.adminModeBtn.classList.toggle("hidden", !readOnly);
+      els.adminModeBtn.textContent = adminView ? "대기 화면" : "관리자 모드";
+      applyEditorInteractivity();
 
       if (readOnly) {
         setHistoryView(false, { silent: true });
-        els.lockStatus.textContent = message;
+        els.lockStatus.textContent = adminView ? "관리자 보기 모드입니다.\n조작은 잠겨 있습니다." : message;
         els.lockStatus.classList.remove("hidden");
         if (!document.hidden) loadRemoteState({ silent: true });
         return;
@@ -1045,6 +1084,7 @@
 
       els.lockStatus.classList.add("hidden");
       els.lockStatus.textContent = "";
+      els.adminModeBtn.classList.add("hidden");
     }
 
     function sharedStatePayload() {
@@ -1328,6 +1368,28 @@
 
     function toggleShareHistory() {
       setHistoryView(!document.body.classList.contains("history-view"));
+    }
+
+    function toggleAdminViewMode() {
+      if (!canUseRemoteStorage() || hasEditLock) return;
+
+      if (adminViewMode) {
+        adminViewMode = false;
+        setEditLock(false);
+        return;
+      }
+
+      const password = window.prompt("관리자 비밀번호를 입력하세요.");
+      if (password === null) return;
+
+      if (password !== adminPassword) {
+        flash("비밀번호가 맞지 않습니다.");
+        return;
+      }
+
+      adminViewMode = true;
+      setEditLock(false);
+      loadRemoteState({ silent: true });
     }
 
     async function resetSharedState() {
@@ -1795,6 +1857,7 @@
       renderToggle();
       renderRows();
       update();
+      applyEditorInteractivity();
     }
 
     function update() {
@@ -1897,6 +1960,7 @@
     els.resetBtn.addEventListener("click", resetSharedState);
     els.historyBtn.addEventListener("click", toggleShareHistory);
     els.historyRefreshBtn.addEventListener("click", () => loadShareHistory());
+    els.adminModeBtn.addEventListener("click", toggleAdminViewMode);
 
     render();
     startRemoteSync();
