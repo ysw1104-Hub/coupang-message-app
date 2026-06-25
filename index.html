@@ -108,6 +108,14 @@
       align-items: start;
     }
 
+    body.history-view .grid {
+      display: none;
+    }
+
+    body.history-view .top-actions {
+      grid-template-columns: 88px;
+    }
+
     .grid > * {
       min-width: 0;
     }
@@ -139,6 +147,11 @@
       padding: 12px;
     }
 
+    body.history-view .history-panel {
+      min-height: calc(100vh - 92px);
+      margin-bottom: 0;
+    }
+
     .history-head {
       display: flex;
       align-items: center;
@@ -152,6 +165,12 @@
       gap: 6px;
       max-height: 170px;
       overflow-y: auto;
+    }
+
+    body.history-view .history-list {
+      gap: 8px;
+      max-height: none;
+      overflow-y: visible;
     }
 
     .history-item,
@@ -179,6 +198,12 @@
       color: var(--muted);
       font-size: 12px;
       white-space: nowrap;
+    }
+
+    body.history-view .history-item,
+    body.history-view .history-empty {
+      min-height: 48px;
+      padding: 12px;
     }
 
     .section {
@@ -595,6 +620,10 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
+      body.history-view .top-actions {
+        grid-template-columns: minmax(88px, 1fr);
+      }
+
       .editor,
       .preview {
         padding: 10px;
@@ -959,8 +988,7 @@
       els.previewHead.classList.toggle("hidden", readOnly);
 
       if (readOnly) {
-        els.historyPanel.classList.add("hidden");
-        els.historyBtn.classList.remove("primary");
+        setHistoryView(false, { silent: true });
         els.lockStatus.textContent = message;
         els.lockStatus.classList.remove("hidden");
         return;
@@ -1128,7 +1156,7 @@
           body: JSON.stringify({ mode: state.mode, message })
         });
         if (!response.ok) throw new Error("Share log failed");
-        if (!els.historyPanel.classList.contains("hidden")) loadShareHistory({ silent: true });
+        if (document.body.classList.contains("history-view")) loadShareHistory({ silent: true });
       } catch {
         // 기록 실패가 공유 자체를 막으면 안 됩니다.
       }
@@ -1206,11 +1234,17 @@
       }
     }
 
+    function setHistoryView(show, options = {}) {
+      document.body.classList.toggle("history-view", show);
+      els.historyPanel.classList.toggle("hidden", !show);
+      els.resetBtn.classList.toggle("hidden", show);
+      els.historyBtn.classList.toggle("primary", show);
+      els.historyBtn.textContent = show ? "돌아가기" : "기록";
+      if (show && !options.silent) loadShareHistory();
+    }
+
     function toggleShareHistory() {
-      const willOpen = els.historyPanel.classList.contains("hidden");
-      els.historyPanel.classList.toggle("hidden", !willOpen);
-      els.historyBtn.classList.toggle("primary", willOpen);
-      if (willOpen) loadShareHistory();
+      setHistoryView(!document.body.classList.contains("history-view"));
     }
 
     async function resetSharedState() {
