@@ -131,7 +131,7 @@
     }
 
     .row.feeder-row {
-      grid-template-columns: minmax(0, 1fr) 104px;
+      grid-template-columns: minmax(0, 1fr) 96px 58px;
     }
 
     .load-row {
@@ -304,6 +304,13 @@
     }
 
     .btn.complete {
+      padding: 0 5px;
+      font-size: 12px;
+      line-height: 1.15;
+      white-space: pre-line;
+    }
+
+    .btn.rest-start {
       padding: 0 5px;
       font-size: 12px;
       line-height: 1.15;
@@ -701,6 +708,13 @@
       return new Date().getMinutes();
     }
 
+    function restEndTimeText(now = new Date()) {
+      const end = new Date(now.getTime() + 35 * 60 * 1000);
+      const hour = end.getHours();
+      const minute = end.getMinutes();
+      return minute === 0 ? `${hour}시` : `${hour}시 ${minute}분`;
+    }
+
     function formatMixedNumbers() {
       return state.mixedLines
         .filter((line) => line.length)
@@ -961,6 +975,20 @@
         state[kind][index].time = time.value;
         update();
       });
+
+      if (kind === "feeders") {
+        const restStart = document.createElement("button");
+        restStart.className = "btn green rest-start";
+        restStart.type = "button";
+        restStart.textContent = "휴게\n시작";
+        restStart.addEventListener("click", () => {
+          state.feeders[index].time = restEndTimeText();
+          renderRows();
+          update();
+        });
+        row.append(name, time, restStart);
+        return row;
+      }
 
       row.append(name, time);
       return row;
