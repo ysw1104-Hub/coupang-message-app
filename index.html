@@ -263,11 +263,30 @@
       gap: 14px;
     }
 
+    .mixed-groups .section-title {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 8px;
+    }
+
+    .mixed-groups .section-title h2 {
+      white-space: nowrap;
+      font-size: 16px;
+    }
+
     .mixed-actions {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 6px;
-      width: 100%;
+      justify-self: end;
+      gap: 4px;
+      width: min(100%, 360px);
+      min-width: 0;
+    }
+
+    .mixed-actions .btn.small {
+      min-height: 32px;
+      padding: 0 6px;
+      font-size: 12px;
     }
 
     .number-grid {
