@@ -185,6 +185,12 @@
 
     .history-item {
       display: grid;
+      gap: 8px;
+      align-items: start;
+    }
+
+    .history-summary {
+      display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
       gap: 8px;
       align-items: center;
@@ -200,10 +206,32 @@
       white-space: nowrap;
     }
 
+    .history-message {
+      margin: 0;
+      max-height: 180px;
+      overflow-y: auto;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--ink);
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      word-break: break-all;
+      line-height: 1.55;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 13px;
+    }
+
     body.history-view .history-item,
     body.history-view .history-empty {
       min-height: 48px;
       padding: 12px;
+    }
+
+    body.history-view .history-message {
+      max-height: none;
+      font-size: 14px;
     }
 
     .section {
@@ -1178,7 +1206,7 @@
     }
 
     function renderShareHistory(entries) {
-      const safeEntries = Array.isArray(entries) ? entries.slice(0, 40) : [];
+      const safeEntries = Array.isArray(entries) ? entries : [];
 
       if (!safeEntries.length) {
         els.historyList.replaceChildren(Object.assign(document.createElement("div"), {
@@ -1192,6 +1220,9 @@
         const row = document.createElement("div");
         row.className = "history-item";
 
+        const summary = document.createElement("div");
+        summary.className = "history-summary";
+
         const time = document.createElement("div");
         time.className = "history-time";
         time.textContent = formatHistoryTime(entry.createdAt);
@@ -1200,7 +1231,12 @@
         mode.className = "history-mode";
         mode.textContent = entry.mode || "";
 
-        row.append(time, mode);
+        const message = document.createElement("pre");
+        message.className = "history-message";
+        message.textContent = entry.message || "내용 없음";
+
+        summary.append(time, mode);
+        row.append(summary, message);
         return row;
       });
 
