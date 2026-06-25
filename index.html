@@ -209,7 +209,7 @@
     .place-name.place-yellow {
       border-color: #d97706;
       background: #facc15;
-      color: #15171a;
+      color: #fff;
     }
 
     .place-name.place-purple {
@@ -1232,7 +1232,7 @@
       clearRange.type = "button";
       clearRange.textContent = "선택해제";
       clearRange.dataset.clearRange = range.label;
-      actions.append(addLine, selectAll, clearRange);
+      actions.append(selectAll, clearRange, addLine);
 
       title.append(heading, actions);
 
