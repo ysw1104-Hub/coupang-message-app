@@ -887,6 +887,7 @@
       { label: "300", start: 301, end: 314 }
     ];
     const placeColorClasses = ["place-blue", "place-green", "place-red", "place-yellow", "place-purple"];
+    const placeColorDots = ["🔵", "🟢", "🔴", "🟡", "🟣"];
     const maxMixedLineCount = 10;
     let remoteHydrating = true;
     let applyingRemoteState = false;
@@ -1439,10 +1440,11 @@
 
       lines.push(`혼적 ${state.mixed}`);
 
-      state.places.forEach((place) => {
+      state.places.forEach((place, index) => {
         const name = place.name.trim();
         const time = formatTime(place.time);
-        if (name) lines.push([name, time].filter(Boolean).join(" "));
+        const label = [placeColorDots[index], name].filter(Boolean).join(" ");
+        if (name) lines.push([label, time].filter(Boolean).join(" "));
       });
 
       if (showsFeeders()) {
