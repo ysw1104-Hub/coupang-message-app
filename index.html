@@ -131,7 +131,31 @@
     }
 
     .row.feeder-row {
-      grid-template-columns: minmax(0, 1fr) 96px 58px;
+      grid-template-columns: 42px minmax(0, 1fr) 42px 58px;
+      grid-template-areas:
+        "name name name rest"
+        "minus time plus .";
+      gap: 6px;
+    }
+
+    .feeder-row .feeder-name {
+      grid-area: name;
+    }
+
+    .feeder-row .feeder-time {
+      grid-area: time;
+    }
+
+    .feeder-row .feeder-minus {
+      grid-area: minus;
+    }
+
+    .feeder-row .feeder-plus {
+      grid-area: plus;
+    }
+
+    .feeder-row .rest-start {
+      grid-area: rest;
     }
 
     .load-row {
@@ -715,6 +739,24 @@
       return minute === 0 ? `${hour}시` : `${hour}시 ${minute}분`;
     }
 
+    function parseTimeText(value) {
+      const text = String(value || "").trim();
+      const match = text.match(/^(\d{1,2})시(?:\s*(\d{1,2})분?)?$/);
+      if (!match) return null;
+
+      const hour = Number(match[1]);
+      const minute = Number(match[2] || 0);
+      if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+      return hour * 60 + minute;
+    }
+
+    function formatMinutes(totalMinutes) {
+      const normalized = ((totalMinutes % (24 * 60)) + (24 * 60)) % (24 * 60);
+      const hour = Math.floor(normalized / 60);
+      const minute = normalized % 60;
+      return minute === 0 ? `${hour}시` : `${hour}시 ${minute}분`;
+    }
+
     function formatMixedNumbers() {
       return state.mixedLines
         .filter((line) => line.length)
@@ -977,6 +1019,35 @@
       });
 
       if (kind === "feeders") {
+        name.classList.add("feeder-name");
+        time.classList.add("feeder-time");
+
+        const minus = document.createElement("button");
+        minus.className = "btn step feeder-minus";
+        minus.type = "button";
+        minus.textContent = "-";
+        minus.setAttribute("aria-label", `${item.name || "피더"} 휴게 종료 1분 감소`);
+        minus.addEventListener("click", () => {
+          const parsed = parseTimeText(state.feeders[index].time);
+          const base = parsed ?? parseTimeText(restEndTimeText());
+          state.feeders[index].time = formatMinutes(base - 1);
+          renderRows();
+          update();
+        });
+
+        const plus = document.createElement("button");
+        plus.className = "btn step feeder-plus";
+        plus.type = "button";
+        plus.textContent = "+";
+        plus.setAttribute("aria-label", `${item.name || "피더"} 휴게 종료 1분 증가`);
+        plus.addEventListener("click", () => {
+          const parsed = parseTimeText(state.feeders[index].time);
+          const base = parsed ?? parseTimeText(restEndTimeText());
+          state.feeders[index].time = formatMinutes(base + 1);
+          renderRows();
+          update();
+        });
+
         const restStart = document.createElement("button");
         restStart.className = "btn green rest-start";
         restStart.type = "button";
@@ -986,7 +1057,7 @@
           renderRows();
           update();
         });
-        row.append(name, time, restStart);
+        row.append(name, minus, time, plus, restStart);
         return row;
       }
 
