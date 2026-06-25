@@ -134,6 +134,35 @@
       grid-template-columns: minmax(0, 1fr) 104px;
     }
 
+    .load-row {
+      display: grid;
+      grid-template-columns: 64px minmax(96px, 1fr) 42px 48px 42px 58px;
+      gap: 6px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .place-name,
+    .minute-display {
+      min-height: 44px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fbfcfd;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+    }
+
+    .place-name {
+      color: #2d333b;
+    }
+
+    .minute-display {
+      color: var(--ink);
+      font-variant-numeric: tabular-nums;
+    }
+
     label {
       color: #2d333b;
       font-weight: 700;
@@ -274,6 +303,27 @@
       font-size: 13px;
     }
 
+    .btn.complete {
+      padding: 0 8px;
+      font-size: 13px;
+      line-height: 1.15;
+    }
+
+    .btn.step,
+    .btn.clear-place {
+      padding: 0;
+    }
+
+    .btn.step {
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .btn.clear-place {
+      color: var(--danger);
+      font-size: 13px;
+    }
+
     .preview-head {
       display: block;
       margin-bottom: 12px;
@@ -362,6 +412,24 @@
         grid-template-columns: 64px minmax(0, 1fr);
       }
 
+      .load-row {
+        grid-template-columns: 44px minmax(74px, 1fr) 32px 34px 32px 42px;
+        gap: 4px;
+      }
+
+      .place-name,
+      .minute-display,
+      .btn.complete,
+      .btn.step,
+      .btn.clear-place {
+        min-height: 42px;
+      }
+
+      .btn.complete,
+      .btn.clear-place {
+        font-size: 12px;
+      }
+
       .toggle.mode-toggle {
         grid-template-columns: repeat(2, 1fr);
       }
@@ -383,10 +451,6 @@
       <div>
         <h1>상차 메시지 정리</h1>
         <p class="sub">시간만 채우면 카톡에 올릴 문구가 바로 정리됩니다.</p>
-      </div>
-      <div class="toolbar">
-        <button class="btn" id="clearTimesBtn" type="button">시간 지우기</button>
-        <button class="btn" id="resetBtn" type="button">기본값</button>
       </div>
     </header>
 
@@ -429,7 +493,6 @@
             <h2>상차 시간</h2>
           </div>
           <div id="places"></div>
-          <p class="muted">숫자만 넣어도 됩니다. 예: 24, 23, 22시</p>
         </div>
 
         <div class="section" id="feederSection">
@@ -518,8 +581,6 @@
       hint: document.querySelector("#hint"),
       copyBtn: document.querySelector("#copyBtn"),
       shareBtn: document.querySelector("#shareBtn"),
-      resetBtn: document.querySelector("#resetBtn"),
-      clearTimesBtn: document.querySelector("#clearTimesBtn"),
       kakaoKey: document.querySelector("#kakaoKey"),
       shareUrl: document.querySelector("#shareUrl")
     };
@@ -623,6 +684,17 @@
       if (!value) return "";
       if (/^\d{1,2}$/.test(value)) return value;
       return value.replace(/\s+/g, " ");
+    }
+
+    function normalizeMinute(value) {
+      if (!/^\d{1,2}$/.test(String(value || "").trim())) return null;
+      const minute = Number(value);
+      if (!Number.isFinite(minute)) return null;
+      return ((minute % 60) + 60) % 60;
+    }
+
+    function currentMinute() {
+      return new Date().getMinutes();
     }
 
     function formatMixedNumbers() {
@@ -802,6 +874,66 @@
       els.feederSection.classList.toggle("hidden", isMixedMode());
     }
 
+    function makePlaceRow(item, index) {
+      const row = document.createElement("div");
+      row.className = "load-row";
+
+      const name = document.createElement("div");
+      name.className = "place-name";
+      name.textContent = item.name;
+
+      const complete = document.createElement("button");
+      complete.className = "btn green complete";
+      complete.type = "button";
+      complete.textContent = "상차 완료";
+      complete.addEventListener("click", () => {
+        state.places[index].time = String(currentMinute());
+        renderRows();
+        update();
+      });
+
+      const minus = document.createElement("button");
+      minus.className = "btn step";
+      minus.type = "button";
+      minus.textContent = "-";
+      minus.setAttribute("aria-label", `${item.name} 1분 감소`);
+      minus.addEventListener("click", () => {
+        const base = normalizeMinute(state.places[index].time) ?? currentMinute();
+        state.places[index].time = String((base + 59) % 60);
+        renderRows();
+        update();
+      });
+
+      const minute = document.createElement("div");
+      minute.className = "minute-display";
+      minute.textContent = formatTime(item.time);
+
+      const plus = document.createElement("button");
+      plus.className = "btn step";
+      plus.type = "button";
+      plus.textContent = "+";
+      plus.setAttribute("aria-label", `${item.name} 1분 증가`);
+      plus.addEventListener("click", () => {
+        const base = normalizeMinute(state.places[index].time) ?? currentMinute();
+        state.places[index].time = String((base + 1) % 60);
+        renderRows();
+        update();
+      });
+
+      const clear = document.createElement("button");
+      clear.className = "btn clear-place";
+      clear.type = "button";
+      clear.textContent = "지우기";
+      clear.addEventListener("click", () => {
+        state.places[index].time = "";
+        renderRows();
+        update();
+      });
+
+      row.append(name, complete, minus, minute, plus, clear);
+      return row;
+    }
+
     function makeRow(kind, item, index) {
       const row = document.createElement("div");
       row.className = "row";
@@ -869,7 +1001,7 @@
     }
 
     function renderRows() {
-      els.places.replaceChildren(...state.places.map((item, index) => makeRow("places", item, index)));
+      els.places.replaceChildren(...state.places.map((item, index) => makePlaceRow(item, index)));
       els.feeders.replaceChildren(...state.feeders.map((item, index) => makeRow("feeders", item, index)));
       els.mixedGroups.replaceChildren(...mixedRanges.map(makeMixedGroup));
     }
@@ -1001,22 +1133,6 @@
       state.mixed = button.dataset.mixed;
       renderToggle();
       update();
-    });
-
-    els.clearTimesBtn.addEventListener("click", () => {
-      state.places = state.places.map((place) => ({ ...place, time: "" }));
-      render();
-      flash("시간을 비웠습니다.");
-    });
-
-    els.resetBtn.addEventListener("click", () => {
-      const kakaoKey = state.kakaoKey;
-      const shareUrl = state.shareUrl;
-      state = structuredClone(defaults);
-      state.kakaoKey = kakaoKey;
-      state.shareUrl = shareUrl;
-      render();
-      flash("기본값으로 되돌렸습니다.");
     });
 
     els.copyBtn.addEventListener("click", async () => {
