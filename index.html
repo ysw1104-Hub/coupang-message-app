@@ -133,8 +133,8 @@
     .row.feeder-row {
       grid-template-columns: 42px minmax(0, 1fr) 42px 58px;
       grid-template-areas:
-        "name name name rest"
-        "minus time plus .";
+        "name name name name"
+        "minus time plus rest";
       gap: 6px;
     }
 
@@ -160,7 +160,7 @@
 
     .load-row {
       display: grid;
-      grid-template-columns: 64px 46px 52px 46px 70px 58px;
+      grid-template-columns: 64px 48px minmax(54px, 1fr) 48px 74px 58px;
       gap: 6px;
       align-items: center;
       margin-bottom: 8px;
@@ -445,7 +445,7 @@
       }
 
       .load-row {
-        grid-template-columns: 44px 38px 38px 38px 58px 42px;
+        grid-template-columns: 44px 40px minmax(40px, 1fr) 40px 58px 42px;
         gap: 4px;
       }
 
