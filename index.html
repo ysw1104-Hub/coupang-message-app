@@ -362,6 +362,8 @@
     .minute-display {
       color: var(--ink);
       font-variant-numeric: tabular-nums;
+      padding: 0 6px;
+      text-align: center;
     }
 
     label {
@@ -453,10 +455,10 @@
 
     .mixed-actions {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       justify-self: end;
       gap: 4px;
-      width: min(100%, 360px);
+      width: min(100%, 250px);
       min-width: 0;
     }
 
@@ -687,6 +689,10 @@
       .btn.step,
       .btn.clear-place {
         min-height: 42px;
+      }
+
+      .minute-display {
+        padding: 0 4px;
       }
 
       .btn.clear-place {
@@ -1404,27 +1410,6 @@
       return true;
     }
 
-    function selectWholeRange(range) {
-      const chunks = [];
-      const numbers = rangeNumbers(range);
-      for (let index = 0; index < numbers.length; index += maxMixedLineCount) {
-        chunks.push(numbers.slice(index, index + maxMixedLineCount));
-      }
-
-      const currentLine = state.mixedLines[state.currentMixedLine] || [];
-      if (currentLine.length) {
-        state.mixedLines.splice(state.currentMixedLine + 1, 0, ...chunks);
-        state.currentMixedLine += chunks.length;
-      } else {
-        state.mixedLines.splice(state.currentMixedLine, 1, ...chunks);
-        state.currentMixedLine += chunks.length - 1;
-      }
-
-      renderRows();
-      update();
-      flash(`${range.label}번대 전체를 추가했습니다.`);
-    }
-
     function clearWholeRange(range) {
       const rangeSet = new Set(rangeNumbers(range));
       const previousLine = state.currentMixedLine;
@@ -1645,9 +1630,16 @@
         update();
       });
 
-      const minute = document.createElement("div");
+      const minute = document.createElement("input");
       minute.className = "minute-display";
-      minute.textContent = formatTime(item.time);
+      minute.value = formatTime(item.time);
+      minute.inputMode = "numeric";
+      minute.placeholder = "분";
+      minute.setAttribute("aria-label", `${item.name} 상차 시간 직접 입력`);
+      minute.addEventListener("input", () => {
+        state.places[index].time = minute.value.trim();
+        update();
+      });
 
       const plus = document.createElement("button");
       plus.className = "btn step";
@@ -1764,18 +1756,12 @@
       addLine.textContent = "추가 혼적";
       addLine.dataset.addLine = "true";
 
-      const selectAll = document.createElement("button");
-      selectAll.className = "btn small";
-      selectAll.type = "button";
-      selectAll.textContent = "전체선택";
-      selectAll.dataset.selectRange = range.label;
-
       const clearRange = document.createElement("button");
       clearRange.className = "btn small";
       clearRange.type = "button";
       clearRange.textContent = "선택해제";
       clearRange.dataset.clearRange = range.label;
-      actions.append(selectAll, clearRange, addLine);
+      actions.append(clearRange, addLine);
 
       title.append(heading, actions);
 
@@ -1871,13 +1857,7 @@
         return;
       }
 
-      const rangeButton = event.target.closest("button[data-select-range]");
-      if (!rangeButton) return;
-
-      const range = mixedRanges.find((item) => item.label === rangeButton.dataset.selectRange);
-      if (!range) return;
-
-      selectWholeRange(range);
+      return;
     });
 
     els.memo.addEventListener("input", () => {
