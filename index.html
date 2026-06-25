@@ -98,6 +98,7 @@
       font-size: 14px;
       font-weight: 800;
       line-height: 1.35;
+      white-space: pre-line;
     }
 
     .grid {
@@ -948,7 +949,7 @@
       }
     }
 
-    function setEditLock(owner, message = "이미 작업 중에 있습니다.") {
+    function setEditLock(owner, message = "이미 작업 중에 있습니다.\n작업이 끝날 때까지 기다려주십시오.") {
       hasEditLock = owner || !canUseRemoteStorage();
       const readOnly = canUseRemoteStorage() && !hasEditLock;
 
