@@ -188,6 +188,36 @@
       font-weight: 800;
     }
 
+    .place-name.place-blue {
+      border-color: #1d4ed8;
+      background: #2563eb;
+      color: #fff;
+    }
+
+    .place-name.place-green {
+      border-color: #15803d;
+      background: #16a34a;
+      color: #fff;
+    }
+
+    .place-name.place-red {
+      border-color: #b91c1c;
+      background: #dc2626;
+      color: #fff;
+    }
+
+    .place-name.place-yellow {
+      border-color: #d97706;
+      background: #facc15;
+      color: #15171a;
+    }
+
+    .place-name.place-purple {
+      border-color: #7e22ce;
+      background: #9333ea;
+      color: #fff;
+    }
+
     .place-name {
       color: #2d333b;
     }
@@ -403,8 +433,7 @@
 
     .message-box {
       width: 100%;
-      min-height: 150px;
-      max-height: 34vh;
+      height: 112px;
       margin: 0;
       padding: 16px;
       border: 1px solid var(--line);
@@ -515,8 +544,7 @@
       }
 
       .message-box {
-        min-height: 128px;
-        max-height: 30vh;
+        height: 96px;
         font-size: 16px;
       }
     }
@@ -662,6 +690,7 @@
       { label: "200", start: 201, end: 219 },
       { label: "300", start: 301, end: 314 }
     ];
+    const placeColorClasses = ["place-blue", "place-green", "place-red", "place-yellow", "place-purple"];
     const maxMixedLineCount = 10;
     let state = loadState();
 
@@ -1044,6 +1073,7 @@
 
       const name = document.createElement("div");
       name.className = "place-name";
+      name.classList.add(placeColorClasses[index] || "place-blue");
       name.textContent = item.name;
 
       const complete = document.createElement("button");
