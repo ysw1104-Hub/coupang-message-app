@@ -201,9 +201,20 @@
     }
 
     .history-mode {
-      color: var(--muted);
-      font-size: 12px;
+      min-height: 30px;
+      padding: 5px 10px;
+      border: 1px solid rgba(35, 100, 170, 0.35);
+      border-radius: 999px;
+      background: rgba(35, 100, 170, 0.1);
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 900;
       white-space: nowrap;
+    }
+
+    .history-detail {
+      width: 100%;
+      justify-self: stretch;
     }
 
     .history-message {
@@ -1229,14 +1240,27 @@
 
         const mode = document.createElement("div");
         mode.className = "history-mode";
-        mode.textContent = entry.mode || "";
+        mode.textContent = entry.mode || "기록";
+
+        const detail = document.createElement("button");
+        detail.className = "btn small history-detail";
+        detail.type = "button";
+        detail.textContent = "자세히 보기";
+        detail.setAttribute("aria-expanded", "false");
 
         const message = document.createElement("pre");
-        message.className = "history-message";
+        message.className = "history-message hidden";
         message.textContent = entry.message || "내용 없음";
 
+        detail.addEventListener("click", () => {
+          const willOpen = message.classList.contains("hidden");
+          message.classList.toggle("hidden", !willOpen);
+          detail.textContent = willOpen ? "닫기" : "자세히 보기";
+          detail.setAttribute("aria-expanded", String(willOpen));
+        });
+
         summary.append(time, mode);
-        row.append(summary, message);
+        row.append(summary, detail, message);
         return row;
       });
 
