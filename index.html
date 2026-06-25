@@ -853,6 +853,7 @@
     const shareLogUrl = "/api/share-log";
     const sessionUrl = "/api/session";
     const clientIdKey = "coupang-loader-client-id";
+    const sessionCheckMs = 3000;
     const els = {
       topActions: document.querySelector(".top-actions"),
       lockStatus: document.querySelector("#lockStatus"),
@@ -1179,7 +1180,7 @@
       refreshEditSession("acquire");
       window.setInterval(() => {
         refreshEditSession(hasEditLock ? "heartbeat" : "acquire");
-      }, 10000);
+      }, sessionCheckMs);
       document.addEventListener("visibilitychange", () => {
         if (!document.hidden) refreshEditSession(hasEditLock ? "heartbeat" : "acquire");
       });
