@@ -86,6 +86,10 @@
       align-items: start;
     }
 
+    .grid > * {
+      min-width: 0;
+    }
+
     .panel {
       background: var(--panel);
       border: 1px solid var(--line);
@@ -408,6 +412,9 @@
       background: #fbfcfd;
       white-space: pre-wrap;
       overflow-y: auto;
+      overflow-x: hidden;
+      overflow-wrap: anywhere;
+      word-break: break-all;
       line-height: 1.6;
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
       font-size: 16px;
@@ -622,8 +629,8 @@
         { name: "익산", time: "" }
       ],
       feeders: [
-        { name: "종훈 진국.상훈", time: "22시" },
-        { name: "선웅", time: "(도망)" }
+        { name: "종훈 진국.상훈", time: "" },
+        { name: "선웅", time: "" }
       ],
       memo: "",
       kakaoKey: defaultKakaoKey,
@@ -711,6 +718,21 @@
       return normalized.length ? normalized : [[]];
     }
 
+    function normalizeFeeders(value) {
+      const feeders = Array.isArray(value.feeders) && value.feeders.length
+        ? value.feeders
+        : structuredClone(defaults.feeders);
+
+      const savedOldDefaults =
+        feeders.length === 2 &&
+        feeders[0]?.name === "종훈 진국.상훈" &&
+        feeders[0]?.time === "22시" &&
+        feeders[1]?.name === "선웅" &&
+        feeders[1]?.time === "(도망)";
+
+      return savedOldDefaults ? structuredClone(defaults.feeders) : feeders;
+    }
+
     function loadState() {
       try {
         const saved = JSON.parse(localStorage.getItem(storageKey));
@@ -735,7 +757,7 @@
         mixedLines,
         currentMixedLine,
         places: Array.isArray(value.places) && value.places.length ? value.places : structuredClone(defaults.places),
-        feeders: Array.isArray(value.feeders) ? value.feeders : structuredClone(defaults.feeders),
+        feeders: normalizeFeeders(value),
         memo: value.memo || "",
         kakaoKey: defaults.kakaoKey,
         shareUrl: value.shareUrl || defaults.shareUrl
@@ -865,7 +887,7 @@
       state.places.forEach((place) => {
         const name = place.name.trim();
         const time = formatTime(place.time);
-        if (name && time) lines.push(`${name} ${time}`);
+        if (name) lines.push([name, time].filter(Boolean).join(" "));
       });
 
       if (showsFeeders()) {
@@ -873,16 +895,14 @@
           .map((item) => {
             const name = item.name.trim();
             const time = formatTime(item.time);
-            if (!name && !time) return "";
+            if (!time) return "";
             return [name, time].filter(Boolean).join(" ");
           })
           .filter(Boolean);
 
-        if (feederLines.length) {
-          lines.push("");
-          lines.push("피더 휴게");
-          lines.push(...feederLines);
-        }
+        lines.push("");
+        lines.push("피더 휴게");
+        lines.push(...feederLines);
       }
 
       const memo = state.memo.trim();
