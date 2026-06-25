@@ -458,6 +458,31 @@
       gap: 14px;
     }
 
+    .mixed-line-list {
+      display: grid;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    .mixed-line-button {
+      width: 100%;
+      min-height: 38px;
+      padding: 7px 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--ink);
+      cursor: pointer;
+      font-weight: 800;
+      text-align: left;
+    }
+
+    .mixed-line-button.active {
+      border-color: var(--accent);
+      background: rgba(35, 100, 170, 0.1);
+      color: var(--accent);
+    }
+
     .mixed-groups .section-title {
       display: grid;
       grid-template-columns: auto minmax(0, 1fr);
@@ -804,6 +829,7 @@
           <div class="section-title">
             <h2>혼적 번호</h2>
           </div>
+          <div class="mixed-line-list" id="mixedLineList"></div>
           <div class="mixed-groups" id="mixedGroups"></div>
         </div>
 
@@ -887,6 +913,7 @@
       mixedToggle: document.querySelector("#mixedToggle"),
       mixedStatusSection: document.querySelector("#mixedStatusSection"),
       mixedDetailSection: document.querySelector("#mixedDetailSection"),
+      mixedLineList: document.querySelector("#mixedLineList"),
       mixedGroups: document.querySelector("#mixedGroups"),
       loadSection: document.querySelector("#loadSection"),
       feederSection: document.querySelector("#feederSection"),
@@ -1844,9 +1871,24 @@
       return section;
     }
 
+    function makeMixedLineButtons() {
+      const lines = state.mixedLines.length ? state.mixedLines : [[]];
+
+      return lines.map((line, index) => {
+        const button = document.createElement("button");
+        button.className = "mixed-line-button";
+        button.classList.toggle("active", index === state.currentMixedLine);
+        button.type = "button";
+        button.dataset.mixedLine = String(index);
+        button.textContent = line.length ? `${index + 1}줄 ${line.map(String).join(".")}` : `${index + 1}줄 새 혼적 줄`;
+        return button;
+      });
+    }
+
     function renderRows() {
       els.places.replaceChildren(...state.places.map((item, index) => makePlaceRow(item, index)));
       els.feeders.replaceChildren(...state.feeders.map((item, index) => makeRow("feeders", item, index)));
+      els.mixedLineList.replaceChildren(...makeMixedLineButtons());
       els.mixedGroups.replaceChildren(...mixedRanges.map(makeMixedGroup));
     }
 
@@ -1921,6 +1963,19 @@
       }
 
       return;
+    });
+
+    els.mixedLineList.addEventListener("click", (event) => {
+      const button = event.target.closest("button[data-mixed-line]");
+      if (!button) return;
+
+      const index = Number(button.dataset.mixedLine);
+      if (!Number.isInteger(index) || !state.mixedLines[index]) return;
+
+      state.currentMixedLine = index;
+      renderRows();
+      update();
+      flash(`${index + 1}번째 혼적 줄을 수정합니다.`);
     });
 
     els.memo.addEventListener("input", () => {
