@@ -136,7 +136,7 @@
 
     .load-row {
       display: grid;
-      grid-template-columns: 64px minmax(96px, 1fr) 42px 48px 42px 58px;
+      grid-template-columns: 64px 46px 52px 46px 70px 58px;
       gap: 6px;
       align-items: center;
       margin-bottom: 8px;
@@ -304,9 +304,10 @@
     }
 
     .btn.complete {
-      padding: 0 8px;
-      font-size: 13px;
+      padding: 0 5px;
+      font-size: 12px;
       line-height: 1.15;
+      white-space: pre-line;
     }
 
     .btn.step,
@@ -315,7 +316,7 @@
     }
 
     .btn.step {
-      font-size: 18px;
+      font-size: 20px;
       line-height: 1;
     }
 
@@ -413,7 +414,7 @@
       }
 
       .load-row {
-        grid-template-columns: 44px minmax(74px, 1fr) 32px 34px 32px 42px;
+        grid-template-columns: 44px 38px 38px 38px 58px 42px;
         gap: 4px;
       }
 
@@ -425,9 +426,12 @@
         min-height: 42px;
       }
 
-      .btn.complete,
       .btn.clear-place {
         font-size: 12px;
+      }
+
+      .btn.complete {
+        font-size: 11px;
       }
 
       .toggle.mode-toggle {
@@ -885,7 +889,7 @@
       const complete = document.createElement("button");
       complete.className = "btn green complete";
       complete.type = "button";
-      complete.textContent = "상차 완료";
+      complete.textContent = "상차\n완료";
       complete.addEventListener("click", () => {
         state.places[index].time = String(currentMinute());
         renderRows();
@@ -930,7 +934,7 @@
         update();
       });
 
-      row.append(name, complete, minus, minute, plus, clear);
+      row.append(name, minus, minute, plus, complete, clear);
       return row;
     }
 
