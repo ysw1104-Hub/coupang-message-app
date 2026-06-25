@@ -263,6 +263,13 @@
       gap: 14px;
     }
 
+    .mixed-actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 6px;
+    }
+
     .number-grid {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -516,7 +523,7 @@
           <div class="section-title">
             <h2>혼적 번호</h2>
             <div class="toolbar">
-              <button class="btn small" id="nextMixedLineBtn" type="button">다음 줄</button>
+              <button class="btn small" id="nextMixedLineBtn" type="button">추가 혼적</button>
               <button class="btn small" id="clearMixedBtn" type="button">선택 해제</button>
             </div>
           </div>
@@ -628,6 +635,12 @@
     const maxMixedLineCount = 10;
     let state = loadState();
 
+    function rangeNumbers(range) {
+      const numbers = [];
+      for (let number = range.start; number <= range.end; number += 1) numbers.push(number);
+      return numbers;
+    }
+
     function normalizeMode(value) {
       const mode = value.mode || value.title || defaults.mode;
       if (mode.replace(/\s+/g, "") === "D1상차") return "D1상차";
@@ -646,22 +659,14 @@
     }
 
     function mixedNumbersFromText(text) {
-      const validNumbers = new Set(mixedRanges.flatMap((range) => {
-        const numbers = [];
-        for (let number = range.start; number <= range.end; number += 1) numbers.push(number);
-        return numbers;
-      }));
+      const validNumbers = new Set(mixedRanges.flatMap(rangeNumbers));
 
       return [...new Set(String(text || "").match(/\d{3}/g)?.map(Number).filter((number) => validNumbers.has(number)) || [])]
         .sort((a, b) => a - b);
     }
 
     function validMixedNumbers() {
-      return new Set(mixedRanges.flatMap((range) => {
-        const numbers = [];
-        for (let number = range.start; number <= range.end; number += 1) numbers.push(number);
-        return numbers;
-      }));
+      return new Set(mixedRanges.flatMap(rangeNumbers));
     }
 
     function normalizeMixedLines(value) {
@@ -765,6 +770,42 @@
       return state.mixedLines
         .filter((line) => line.length)
         .map((line) => line.map(String).join("."));
+    }
+
+    function addMixedLine() {
+      const currentLine = state.mixedLines[state.currentMixedLine] || [];
+      if (!currentLine.length) {
+        flash("현재 줄에 번호를 먼저 선택하세요.");
+        return false;
+      }
+
+      state.mixedLines.push([]);
+      state.currentMixedLine = state.mixedLines.length - 1;
+      renderRows();
+      update();
+      flash("추가 혼적 줄을 만들었습니다.");
+      return true;
+    }
+
+    function selectWholeRange(range) {
+      const chunks = [];
+      const numbers = rangeNumbers(range);
+      for (let index = 0; index < numbers.length; index += maxMixedLineCount) {
+        chunks.push(numbers.slice(index, index + maxMixedLineCount));
+      }
+
+      const currentLine = state.mixedLines[state.currentMixedLine] || [];
+      if (currentLine.length) {
+        state.mixedLines.splice(state.currentMixedLine + 1, 0, ...chunks);
+        state.currentMixedLine += chunks.length;
+      } else {
+        state.mixedLines.splice(state.currentMixedLine, 1, ...chunks);
+        state.currentMixedLine += chunks.length - 1;
+      }
+
+      renderRows();
+      update();
+      flash(`${range.label}번대 전체를 추가했습니다.`);
     }
 
     function buildMessage() {
@@ -1080,22 +1121,31 @@
       heading.textContent = `${range.label}번대`;
 
       const currentLine = new Set(state.mixedLines[state.currentMixedLine] || []);
-      const rangeNumbers = [];
-      for (let number = range.start; number <= range.end; number += 1) rangeNumbers.push(number);
-      const hasSelected = rangeNumbers.some((number) => currentLine.has(number));
+      const actions = document.createElement("div");
+      actions.className = "mixed-actions";
 
-      const toggle = document.createElement("button");
-      toggle.className = "btn small";
-      toggle.type = "button";
-      toggle.textContent = hasSelected ? "구역 해제" : "구역 선택";
-      toggle.dataset.range = range.label;
+      if (range.label !== "100") {
+        const addLine = document.createElement("button");
+        addLine.className = "btn small";
+        addLine.type = "button";
+        addLine.textContent = "추가 혼적";
+        addLine.dataset.addLine = "true";
+        actions.append(addLine);
+      }
 
-      title.append(heading, toggle);
+      const selectAll = document.createElement("button");
+      selectAll.className = "btn small";
+      selectAll.type = "button";
+      selectAll.textContent = "전체선택";
+      selectAll.dataset.selectRange = range.label;
+      actions.append(selectAll);
+
+      title.append(heading, actions);
 
       const grid = document.createElement("div");
       grid.className = "number-grid";
 
-      for (let number = range.start; number <= range.end; number += 1) {
+      for (let number of rangeNumbers(range)) {
         const button = document.createElement("button");
         button.type = "button";
         button.textContent = String(number);
@@ -1171,47 +1221,22 @@
         return;
       }
 
-      const rangeButton = event.target.closest("button[data-range]");
-      if (!rangeButton) return;
-
-      const range = mixedRanges.find((item) => item.label === rangeButton.dataset.range);
-      if (!range) return;
-
-      const currentLine = new Set(state.mixedLines[state.currentMixedLine] || []);
-      const rangeNumbers = [];
-      for (let number = range.start; number <= range.end; number += 1) rangeNumbers.push(number);
-      const hasSelected = rangeNumbers.some((number) => currentLine.has(number));
-
-      if (hasSelected) {
-        rangeNumbers.forEach((number) => currentLine.delete(number));
-      } else {
-        for (const number of rangeNumbers) {
-          if (currentLine.size >= maxMixedLineCount) {
-            flash("한 줄에 혼적 번호는 최대 10개까지 선택할 수 있습니다.");
-            break;
-          }
-          currentLine.add(number);
-        }
-      }
-
-      state.mixedLines[state.currentMixedLine] = [...currentLine];
-      renderRows();
-      update();
-    });
-
-    els.nextMixedLineBtn.addEventListener("click", () => {
-      const currentLine = state.mixedLines[state.currentMixedLine] || [];
-      if (!currentLine.length) {
-        flash("현재 줄에 번호를 먼저 선택하세요.");
+      const addLineButton = event.target.closest("button[data-add-line]");
+      if (addLineButton) {
+        addMixedLine();
         return;
       }
 
-      state.mixedLines.push([]);
-      state.currentMixedLine = state.mixedLines.length - 1;
-      renderRows();
-      update();
-      flash("다음 줄로 넘겼습니다.");
+      const rangeButton = event.target.closest("button[data-select-range]");
+      if (!rangeButton) return;
+
+      const range = mixedRanges.find((item) => item.label === rangeButton.dataset.selectRange);
+      if (!range) return;
+
+      selectWholeRange(range);
     });
+
+    els.nextMixedLineBtn.addEventListener("click", addMixedLine);
 
     els.clearMixedBtn.addEventListener("click", () => {
       state.mixedLines = [[]];
