@@ -2,6 +2,8 @@ import { getStore } from "@netlify/blobs";
 
 const key = "share-log";
 const maxEntries = 200;
+const retentionDays = 7;
+const retentionMs = retentionDays * 24 * 60 * 60 * 1000;
 
 const jsonHeaders = {
   "Content-Type": "application/json; charset=utf-8",
@@ -15,6 +17,18 @@ function json(data, init = {}) {
   });
 }
 
+function pruneEntries(entries, now = Date.now()) {
+  if (!Array.isArray(entries)) return [];
+  const cutoff = now - retentionMs;
+
+  return entries
+    .filter((entry) => {
+      const createdAt = new Date(entry?.createdAt || 0).getTime();
+      return Number.isFinite(createdAt) && createdAt >= cutoff;
+    })
+    .slice(0, maxEntries);
+}
+
 export default async (request) => {
   const store = getStore("coupang-message-app");
 
@@ -22,7 +36,12 @@ export default async (request) => {
 
   if (request.method === "GET") {
     const entries = await store.get(key, { type: "json", consistency: "strong" });
-    return json({ entries: Array.isArray(entries) ? entries : [] });
+    const prunedEntries = pruneEntries(entries);
+    if (Array.isArray(entries) && prunedEntries.length !== entries.length) {
+      await store.setJSON(key, prunedEntries);
+    }
+
+    return json({ entries: prunedEntries, retentionDays });
   }
 
   if (request.method === "POST") {
@@ -33,7 +52,7 @@ export default async (request) => {
       return json({ error: "Message is required" }, { status: 400 });
     }
 
-    const entries = await store.get(key, { type: "json", consistency: "strong" });
+    const entries = pruneEntries(await store.get(key, { type: "json", consistency: "strong" }));
     const nextEntry = {
       id: crypto.randomUUID(),
       createdAt: new Date().toISOString(),
@@ -44,7 +63,7 @@ export default async (request) => {
     const nextEntries = [nextEntry, ...(Array.isArray(entries) ? entries : [])].slice(0, maxEntries);
     await store.setJSON(key, nextEntries);
 
-    return json({ ok: true, entry: nextEntry });
+    return json({ ok: true, entry: nextEntry, retentionDays });
   }
 
   return json({ error: "Method not allowed" }, { status: 405 });
