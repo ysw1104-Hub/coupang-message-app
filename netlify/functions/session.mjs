@@ -92,6 +92,12 @@ export default async (request) => {
 
   await store.setJSON(key, nextRecord);
 
+  await new Promise((resolve) => setTimeout(resolve, 120));
+  const confirmedRecord = await store.get(key, { type: "json", consistency: "strong" });
+  if (confirmedRecord?.clientId !== clientId) {
+    return json(publicSession(confirmedRecord, Date.now()));
+  }
+
   return json({
     owner: true,
     locked: false,

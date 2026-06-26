@@ -901,7 +901,6 @@
     const remoteStateUrl = "/api/state";
     const shareLogUrl = "/api/share-log";
     const sessionUrl = "/api/session";
-    const clientIdKey = "coupang-loader-client-id";
     const sessionCheckMs = 1500;
     const waitingSyncMs = 1000;
     const adminPassword = "1104";
@@ -1061,20 +1060,8 @@
     }
 
     function getClientId() {
-      const randomId = () => {
-        if (window.crypto?.randomUUID) return window.crypto.randomUUID();
-        return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-      };
-
-      try {
-        const saved = sessionStorage.getItem(clientIdKey);
-        if (saved) return saved;
-        const next = randomId();
-        sessionStorage.setItem(clientIdKey, next);
-        return next;
-      } catch {
-        return randomId();
-      }
+      if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+      return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     }
 
     function applyEditorInteractivity() {
@@ -1923,6 +1910,22 @@
         els.hint.textContent = "";
       }, 2200);
     }
+
+    function blockLockedEditorEvent(event) {
+      if (canWriteSharedState()) return;
+      if (!(event.target instanceof Element)) return;
+      if (!event.target.closest("input, textarea, button, select")) return;
+
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      if (event.type === "input" || event.type === "change") render();
+      flash("관리자 모드에서만 수정할 수 있습니다.");
+    }
+
+    ["pointerdown", "click", "beforeinput", "input", "change"].forEach((eventName) => {
+      els.editorPanel.addEventListener(eventName, blockLockedEditorEvent, true);
+    });
 
     els.modeToggle.addEventListener("click", (event) => {
       const button = event.target.closest("button[data-mode]");
