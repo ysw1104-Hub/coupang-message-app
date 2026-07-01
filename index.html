@@ -1088,7 +1088,9 @@
       }
 
       const normalized = lines
-        .map((line) => [...new Set(line.map(Number).filter((number) => valid.has(number)))].slice(0, maxMixedLineCount))
+        .map((line) => [...new Set(line.map(Number).filter((number) => valid.has(number)))]
+          .sort((a, b) => a - b)
+          .slice(0, maxMixedLineCount))
         .filter((line) => line.length);
 
       return normalized.length ? normalized : [[]];
@@ -1625,10 +1627,35 @@
       return minute === 0 ? `${hour}시` : `${hour}시 ${minute}분`;
     }
 
+    function sortMixedLine(line) {
+      return [...new Set(line.map(Number).filter(Number.isFinite))].sort((a, b) => a - b);
+    }
+
+    function compareMixedLineEntries(a, b) {
+      const aFirst = a.line.length ? a.line[0] : Number.POSITIVE_INFINITY;
+      const bFirst = b.line.length ? b.line[0] : Number.POSITIVE_INFINITY;
+      if (aFirst !== bFirst) return aFirst - bFirst;
+
+      const maxLength = Math.max(a.line.length, b.line.length);
+      for (let index = 1; index < maxLength; index += 1) {
+        const aValue = a.line[index] ?? Number.POSITIVE_INFINITY;
+        const bValue = b.line[index] ?? Number.POSITIVE_INFINITY;
+        if (aValue !== bValue) return aValue - bValue;
+      }
+
+      return a.index - b.index;
+    }
+
+    function sortedMixedLineEntries(includeEmpty = false) {
+      return (state.mixedLines.length ? state.mixedLines : [[]])
+        .map((line, index) => ({ line: sortMixedLine(line), index }))
+        .filter((entry) => includeEmpty || entry.line.length)
+        .sort(compareMixedLineEntries);
+    }
+
     function formatMixedNumbers() {
-      return state.mixedLines
-        .filter((line) => line.length)
-        .map((line) => line.map(String).join("."));
+      return sortedMixedLineEntries()
+        .map((entry) => entry.line.map(String).join("."));
     }
 
     function addMixedLine() {
@@ -2026,9 +2053,9 @@
     }
 
     function makeMixedLineButtons() {
-      const lines = state.mixedLines.length ? state.mixedLines : [[]];
+      const entries = sortedMixedLineEntries(true);
 
-      return lines.map((line, index) => {
+      return entries.map(({ line, index }) => {
         const button = document.createElement("button");
         button.className = "mixed-line-button";
         button.classList.toggle("active", index === state.currentMixedLine);
@@ -2128,7 +2155,7 @@
           currentLine.add(number);
         }
 
-        state.mixedLines[state.currentMixedLine] = [...currentLine];
+        state.mixedLines[state.currentMixedLine] = sortMixedLine([...currentLine]);
         renderRows();
         update();
         return;
