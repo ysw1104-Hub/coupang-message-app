@@ -1030,7 +1030,9 @@
     let remoteHydrating = true;
     let applyingRemoteState = false;
     let remoteSaveTimer = 0;
+    let remoteSaving = false;
     let remoteUpdatedAt = "";
+    let localWriteHoldUntil = 0;
     let hasEditLock = false;
     let adminEditMode = false;
     let adminReturnArmedAt = 0;
@@ -1212,18 +1214,27 @@
     function saveState(options = {}) {
       localStorage.setItem(storageKey, JSON.stringify(state));
       if (options.remote === false || remoteHydrating || applyingRemoteState || !canWriteSharedState()) return;
+      localWriteHoldUntil = Date.now() + 2500;
       scheduleRemoteSave();
     }
 
     function scheduleRemoteSave() {
       if (!canUseRemoteStorage() || !canWriteSharedState()) return;
       window.clearTimeout(remoteSaveTimer);
-      remoteSaveTimer = window.setTimeout(saveRemoteState, 700);
+      remoteSaveTimer = window.setTimeout(() => {
+        remoteSaveTimer = 0;
+        saveRemoteState();
+      }, 700);
+    }
+
+    function canReceiveRemoteState() {
+      return Date.now() >= localWriteHoldUntil && !remoteSaveTimer && !remoteSaving;
     }
 
     async function saveRemoteState() {
       if (!canUseRemoteStorage() || !canWriteSharedState()) return;
 
+      remoteSaving = true;
       try {
         const response = await fetch(remoteStateUrl, {
           method: "PUT",
@@ -1236,6 +1247,8 @@
         remoteUpdatedAt = data.updatedAt || remoteUpdatedAt;
       } catch {
         flash("공용 저장이 잠시 안 됩니다. 이 기기에는 저장됐습니다.");
+      } finally {
+        remoteSaving = false;
       }
     }
 
@@ -1244,6 +1257,7 @@
 
       if (options.flush !== false) {
         window.clearTimeout(remoteSaveTimer);
+        remoteSaveTimer = 0;
         saveRemoteState().catch(() => {});
       }
 
@@ -1305,7 +1319,7 @@
     function startRemoteSync() {
       loadRemoteState();
       window.setInterval(() => {
-        if (!document.hidden && !hasEditLock && !adminEditMode) loadRemoteState({ silent: true });
+        if (!document.hidden && canReceiveRemoteState()) loadRemoteState({ silent: true });
       }, waitingSyncMs);
     }
 
@@ -1563,6 +1577,7 @@
       remoteUpdatedAt = "";
       render();
       window.clearTimeout(remoteSaveTimer);
+      remoteSaveTimer = 0;
       await saveRemoteState();
       flash("공용 저장을 기본값으로 돌렸습니다.");
     }
