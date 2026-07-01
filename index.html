@@ -147,6 +147,26 @@
       padding: 12px;
     }
 
+    body.view-only-mode .editor {
+      opacity: 0.68;
+      pointer-events: none;
+      position: relative;
+    }
+
+    body.view-only-mode .editor::before {
+      background: #111827;
+      border-radius: 999px;
+      color: #fff;
+      content: "보기 전용";
+      font-size: 12px;
+      font-weight: 800;
+      padding: 6px 10px;
+      position: absolute;
+      right: 12px;
+      top: 12px;
+      z-index: 2;
+    }
+
     .history-panel {
       margin-bottom: 12px;
       padding: 12px;
@@ -1085,6 +1105,7 @@
       const adminEdit = waiting && adminEditMode;
 
       document.body.classList.toggle("read-only-mode", false);
+      document.body.classList.toggle("view-only-mode", viewOnly);
       document.body.classList.toggle("admin-view-mode", waiting);
       els.editorPanel.classList.toggle("hidden", false);
       els.topActions.classList.toggle("hidden", waiting);
