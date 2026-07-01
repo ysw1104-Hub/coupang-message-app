@@ -968,6 +968,8 @@
     let remoteUpdatedAt = "";
     let hasEditLock = false;
     let adminEditMode = false;
+    let adminReturnArmedAt = 0;
+    let adminWasAway = false;
     let checkingSession = false;
     let state = loadState();
     const clientId = getClientId();
@@ -1181,9 +1183,24 @@
       }
 
       adminEditMode = false;
+      adminReturnArmedAt = 0;
+      adminWasAway = false;
       setEditLock(false);
       if (options.reload) loadRemoteState({ silent: true });
       return true;
+    }
+
+    function markAdminAway() {
+      if (adminEditMode) adminWasAway = true;
+    }
+
+    function syncAfterReturn() {
+      if (adminEditMode && Date.now() >= adminReturnArmedAt) {
+        exitAdminEditMode({ reload: false });
+      }
+
+      loadRemoteState({ silent: true });
+      if (!adminEditMode) refreshEditSession("acquire");
     }
 
     async function loadRemoteState(options = {}) {
@@ -1288,30 +1305,41 @@
       refreshEditSession("acquire");
       window.setInterval(() => {
         if (document.hidden) return;
+        if (adminEditMode) return;
         refreshEditSession(hasEditLock ? "heartbeat" : "acquire");
       }, sessionCheckMs);
       document.addEventListener("visibilitychange", () => {
         if (document.hidden) {
+          markAdminAway();
           exitAdminEditMode({ reload: false });
           releaseEditSession();
           return;
         }
 
-        loadRemoteState({ silent: true });
-        refreshEditSession("acquire");
+        syncAfterReturn();
+      });
+      window.addEventListener("blur", markAdminAway);
+      window.addEventListener("focus", syncAfterReturn);
+      window.addEventListener("pageshow", (event) => {
+        if (event.persisted) markAdminAway();
+        syncAfterReturn();
       });
       window.addEventListener("pagehide", () => {
+        markAdminAway();
         exitAdminEditMode({ reload: false });
         releaseEditSession({ local: false });
       });
       window.addEventListener("beforeunload", () => {
+        markAdminAway();
         exitAdminEditMode({ reload: false });
         releaseEditSession({ local: false });
       });
       document.addEventListener("freeze", () => {
+        markAdminAway();
         exitAdminEditMode({ reload: false });
         releaseEditSession({ local: false });
       });
+      document.addEventListener("resume", syncAfterReturn);
     }
 
     async function recordShareLog(message) {
@@ -1453,6 +1481,8 @@
       }
 
       adminEditMode = true;
+      adminReturnArmedAt = Date.now() + 1500;
+      adminWasAway = false;
       setEditLock(false);
     }
 
