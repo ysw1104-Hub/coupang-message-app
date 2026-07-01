@@ -475,7 +475,14 @@
 
     .mixed-groups {
       display: grid;
-      gap: 14px;
+      gap: 16px;
+    }
+
+    .mixed-range-group {
+      padding: 10px;
+      border: 1px solid #d8e2ee;
+      border-radius: 8px;
+      background: #f8fafc;
     }
 
     .mixed-line-list {
@@ -505,28 +512,52 @@
 
     .mixed-groups .section-title {
       display: grid;
-      grid-template-columns: auto minmax(0, 1fr);
+      grid-template-columns: 70px minmax(0, 1fr);
+      align-items: center;
       gap: 8px;
+      margin-bottom: 8px;
     }
 
     .mixed-groups .section-title h2 {
       white-space: nowrap;
-      font-size: 16px;
+      min-height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      background: #111827;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 900;
     }
 
     .mixed-actions {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       justify-self: end;
-      gap: 4px;
-      width: min(100%, 250px);
+      gap: 6px;
+      width: 100%;
       min-width: 0;
     }
 
     .mixed-actions .btn.small {
-      min-height: 32px;
-      padding: 0 6px;
-      font-size: 12px;
+      min-height: 40px;
+      padding: 0 8px;
+      border-width: 2px;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .mixed-action-clear {
+      border-color: #dc2626;
+      background: #fff;
+      color: #b91c1c;
+    }
+
+    .mixed-action-add {
+      border-color: #15803d;
+      background: #16a34a;
+      color: #fff;
     }
 
     .number-grid {
@@ -1896,6 +1927,7 @@
 
     function makeMixedGroup(range) {
       const section = document.createElement("div");
+      section.className = "mixed-range-group";
       const title = document.createElement("div");
       title.className = "section-title";
 
@@ -1907,13 +1939,13 @@
       actions.className = "mixed-actions";
 
       const addLine = document.createElement("button");
-      addLine.className = "btn small";
+      addLine.className = "btn small mixed-action-add";
       addLine.type = "button";
       addLine.textContent = "추가 혼적";
       addLine.dataset.addLine = "true";
 
       const clearRange = document.createElement("button");
-      clearRange.className = "btn small";
+      clearRange.className = "btn small mixed-action-clear";
       clearRange.type = "button";
       clearRange.textContent = "선택해제";
       clearRange.dataset.clearRange = range.label;
