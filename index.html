@@ -1172,6 +1172,20 @@
       }
     }
 
+    function exitAdminEditMode(options = {}) {
+      if (!adminEditMode) return false;
+
+      if (options.flush !== false) {
+        window.clearTimeout(remoteSaveTimer);
+        saveRemoteState().catch(() => {});
+      }
+
+      adminEditMode = false;
+      setEditLock(false);
+      if (options.reload) loadRemoteState({ silent: true });
+      return true;
+    }
+
     async function loadRemoteState(options = {}) {
       if (!canUseRemoteStorage()) {
         remoteHydrating = false;
@@ -1278,16 +1292,26 @@
       }, sessionCheckMs);
       document.addEventListener("visibilitychange", () => {
         if (document.hidden) {
+          exitAdminEditMode({ reload: false });
           releaseEditSession();
           return;
         }
 
-        if (!adminEditMode) loadRemoteState({ silent: true });
+        loadRemoteState({ silent: true });
         refreshEditSession("acquire");
       });
-      window.addEventListener("pagehide", () => releaseEditSession({ local: false }));
-      window.addEventListener("beforeunload", () => releaseEditSession({ local: false }));
-      document.addEventListener("freeze", () => releaseEditSession({ local: false }));
+      window.addEventListener("pagehide", () => {
+        exitAdminEditMode({ reload: false });
+        releaseEditSession({ local: false });
+      });
+      window.addEventListener("beforeunload", () => {
+        exitAdminEditMode({ reload: false });
+        releaseEditSession({ local: false });
+      });
+      document.addEventListener("freeze", () => {
+        exitAdminEditMode({ reload: false });
+        releaseEditSession({ local: false });
+      });
     }
 
     async function recordShareLog(message) {
@@ -1416,9 +1440,7 @@
       if (!canUseRemoteStorage() || hasEditLock) return;
 
       if (adminEditMode) {
-        adminEditMode = false;
-        setEditLock(false);
-        loadRemoteState({ silent: true });
+        exitAdminEditMode({ reload: true });
         return;
       }
 
