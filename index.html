@@ -479,37 +479,69 @@
     }
 
     .mixed-range-group {
-      --mixed-border: #64748b;
-      --mixed-soft: #f8fafc;
-      --mixed-fill: #64748b;
-      --mixed-text: #334155;
-      --mixed-active-text: #fff;
       padding: 10px;
-      border: 1px solid var(--mixed-border);
+      border: 1px solid #d8e2ee;
       border-radius: 8px;
-      background: var(--mixed-soft);
+      background: #f8fafc;
     }
 
-    .mixed-range-group.range-100 {
-      --mixed-border: #2563eb;
-      --mixed-soft: #eff6ff;
-      --mixed-fill: #2563eb;
-      --mixed-text: #1d4ed8;
+    .mixed-line-list {
+      display: grid;
+      gap: 6px;
+      margin-bottom: 12px;
     }
 
-    .mixed-range-group.range-200 {
-      --mixed-border: #16a34a;
-      --mixed-soft: #f0fdf4;
-      --mixed-fill: #16a34a;
-      --mixed-text: #15803d;
+    .mixed-line-button {
+      width: 100%;
+      min-height: 42px;
+      padding: 7px;
+      border: 2px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      cursor: pointer;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 5px;
+      text-align: left;
     }
 
-    .mixed-range-group.range-300 {
-      --mixed-border: #eab308;
-      --mixed-soft: #fefce8;
-      --mixed-fill: #facc15;
-      --mixed-text: #854d0e;
-      --mixed-active-text: #111827;
+    .mixed-line-button.active {
+      border-color: var(--ink);
+      background: #f8fafc;
+    }
+
+    .mixed-token {
+      min-width: 38px;
+      padding: 5px 8px;
+      border: 2px solid currentColor;
+      border-radius: 999px;
+      background: #fff;
+      font-size: 14px;
+      font-weight: 900;
+      line-height: 1;
+      text-align: center;
+    }
+
+    .mixed-token-100 {
+      color: #2563eb;
+      background: #eff6ff;
+    }
+
+    .mixed-token-200 {
+      color: #15803d;
+      background: #f0fdf4;
+    }
+
+    .mixed-token-300 {
+      color: #854d0e;
+      background: #fef3c7;
+    }
+
+    .mixed-line-empty {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
     }
 
     .mixed-groups .section-title {
@@ -587,19 +619,6 @@
 
     .number-grid button.current {
       box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.55);
-    }
-
-    .mixed-range-group .number-grid button {
-      border-color: var(--mixed-border);
-      border-width: 2px;
-      background: #fff;
-      color: var(--mixed-text);
-    }
-
-    .mixed-range-group .number-grid button.active {
-      border-color: var(--mixed-border);
-      background: var(--mixed-fill);
-      color: var(--mixed-active-text);
     }
 
     .btn {
@@ -895,6 +914,7 @@
           <div class="section-title">
             <h2>혼적 번호</h2>
           </div>
+          <div class="mixed-line-list" id="mixedLineList"></div>
           <div class="mixed-groups" id="mixedGroups"></div>
         </div>
 
@@ -977,6 +997,7 @@
       mixedToggle: document.querySelector("#mixedToggle"),
       mixedStatusSection: document.querySelector("#mixedStatusSection"),
       mixedDetailSection: document.querySelector("#mixedDetailSection"),
+      mixedLineList: document.querySelector("#mixedLineList"),
       mixedGroups: document.querySelector("#mixedGroups"),
       loadSection: document.querySelector("#loadSection"),
       feederSection: document.querySelector("#feederSection"),
@@ -1941,7 +1962,6 @@
     function makeMixedGroup(range) {
       const section = document.createElement("div");
       section.className = "mixed-range-group";
-      section.classList.add(`range-${range.label}`);
       const title = document.createElement("div");
       title.className = "section-title";
 
@@ -1984,9 +2004,45 @@
       return section;
     }
 
+    function mixedNumberClass(number) {
+      if (number >= 100 && number < 200) return "mixed-token mixed-token-100";
+      if (number >= 200 && number < 300) return "mixed-token mixed-token-200";
+      return "mixed-token mixed-token-300";
+    }
+
+    function makeMixedLineButtons() {
+      const lines = state.mixedLines.length ? state.mixedLines : [[]];
+
+      return lines.map((line, index) => {
+        const button = document.createElement("button");
+        button.className = "mixed-line-button";
+        button.classList.toggle("active", index === state.currentMixedLine);
+        button.type = "button";
+        button.dataset.mixedLine = String(index);
+
+        if (!line.length) {
+          const empty = document.createElement("span");
+          empty.className = "mixed-line-empty";
+          empty.textContent = "새 혼적 줄";
+          button.append(empty);
+          return button;
+        }
+
+        line.forEach((number) => {
+          const token = document.createElement("span");
+          token.className = mixedNumberClass(number);
+          token.textContent = String(number);
+          button.append(token);
+        });
+
+        return button;
+      });
+    }
+
     function renderRows() {
       els.places.replaceChildren(...state.places.map((item, index) => makePlaceRow(item, index)));
       els.feeders.replaceChildren(...state.feeders.map((item, index) => makeRow("feeders", item, index)));
+      els.mixedLineList.replaceChildren(...makeMixedLineButtons());
       els.mixedGroups.replaceChildren(...mixedRanges.map(makeMixedGroup));
     }
 
@@ -2077,6 +2133,19 @@
       }
 
       return;
+    });
+
+    els.mixedLineList.addEventListener("click", (event) => {
+      const button = event.target.closest("button[data-mixed-line]");
+      if (!button) return;
+
+      const index = Number(button.dataset.mixedLine);
+      if (!Number.isInteger(index) || !state.mixedLines[index]) return;
+
+      state.currentMixedLine = index;
+      renderRows();
+      update();
+      flash("선택한 혼적 줄을 수정합니다.");
     });
 
     els.memo.addEventListener("input", () => {
