@@ -498,6 +498,17 @@
       margin-bottom: 12px;
     }
 
+    .mixed-line-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 6px;
+      align-items: stretch;
+    }
+
+    .mixed-line-row.has-delete {
+      grid-template-columns: minmax(0, 1fr) 72px;
+    }
+
     .mixed-line-button {
       width: 100%;
       min-height: 42px;
@@ -516,6 +527,21 @@
     .mixed-line-button.active {
       border-color: var(--ink);
       background: #f8fafc;
+    }
+
+    .mixed-line-delete {
+      min-height: 42px;
+      border: 2px solid #fecaca;
+      border-radius: 8px;
+      background: #fff1f2;
+      color: #b91c1c;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .mixed-line-delete:hover {
+      background: #fee2e2;
     }
 
     .mixed-token {
@@ -1890,7 +1916,26 @@
       state.currentMixedLine = Math.min(previousLine, state.mixedLines.length - 1);
       renderRows();
       update();
-      flash(`${range.label}번대 선택을 지웠습니다.`);
+      flash(`${range.label}번대 혼적을 리셋했습니다.`);
+    }
+
+    function deleteMixedLine(index) {
+      if (!Number.isInteger(index) || !state.mixedLines[index]) return;
+
+      const wasCurrentLine = index === state.currentMixedLine;
+      state.mixedLines.splice(index, 1);
+      if (!state.mixedLines.length) state.mixedLines = [[]];
+
+      if (index < state.currentMixedLine) {
+        state.currentMixedLine -= 1;
+      } else if (wasCurrentLine) {
+        state.currentMixedLine = Math.min(index, state.mixedLines.length - 1);
+      }
+
+      state.currentMixedLine = Math.max(0, Math.min(state.currentMixedLine, state.mixedLines.length - 1));
+      renderRows();
+      update();
+      flash("혼적 줄을 지웠습니다.");
     }
 
     function buildMessage() {
@@ -2224,13 +2269,13 @@
       const addLine = document.createElement("button");
       addLine.className = "btn small mixed-action-add";
       addLine.type = "button";
-      addLine.textContent = "추가 혼적";
+      addLine.textContent = "혼적 추가하기";
       addLine.dataset.addLine = "true";
 
       const clearRange = document.createElement("button");
       clearRange.className = "btn small mixed-action-clear";
       clearRange.type = "button";
-      clearRange.textContent = "선택해제";
+      clearRange.textContent = "혼적 리셋";
       clearRange.dataset.clearRange = range.label;
       actions.append(clearRange, addLine);
 
@@ -2271,6 +2316,9 @@
       const entries = sortedMixedLineEntries(true);
 
       return entries.map(({ line, index }) => {
+        const row = document.createElement("div");
+        row.className = "mixed-line-row";
+
         const button = document.createElement("button");
         button.className = "mixed-line-button";
         button.classList.toggle("active", index === state.currentMixedLine);
@@ -2282,7 +2330,6 @@
           empty.className = "mixed-line-empty";
           empty.textContent = "새 혼적 줄";
           button.append(empty);
-          return button;
         }
 
         line.forEach((number) => {
@@ -2292,7 +2339,17 @@
           button.append(token);
         });
 
-        return button;
+        const deleteButton = document.createElement("button");
+        deleteButton.className = "mixed-line-delete";
+        deleteButton.type = "button";
+        deleteButton.textContent = "지우기";
+        deleteButton.dataset.deleteMixedLine = String(index);
+        const canDelete = line.length || entries.length > 1;
+        row.classList.toggle("has-delete", Boolean(canDelete));
+
+        row.append(button);
+        if (canDelete) row.append(deleteButton);
+        return row;
       });
     }
 
@@ -2436,6 +2493,13 @@
     });
 
     els.mixedLineList.addEventListener("click", (event) => {
+      const deleteButton = event.target.closest("button[data-delete-mixed-line]");
+      if (deleteButton) {
+        const index = Number(deleteButton.dataset.deleteMixedLine);
+        deleteMixedLine(index);
+        return;
+      }
+
       const button = event.target.closest("button[data-mixed-line]");
       if (!button) return;
 
