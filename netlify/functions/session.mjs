@@ -30,14 +30,19 @@ function isExpired(record, now) {
   return !record?.clientId || !record?.expiresAt || new Date(record.expiresAt).getTime() <= now;
 }
 
+function sanitizeWorkerName(value) {
+  return String(value || "").trim().replace(/\s+/g, " ").slice(0, 12);
+}
+
 function publicSession(record, now) {
   if (isExpired(record, now)) {
-    return { locked: false, owner: false, expiresAt: null, ttlMs };
+    return { locked: false, owner: false, workerName: "", expiresAt: null, ttlMs };
   }
 
   return {
     locked: true,
     owner: false,
+    workerName: sanitizeWorkerName(record.workerName),
     expiresAt: record.expiresAt,
     ttlMs: Math.max(new Date(record.expiresAt).getTime() - now, 0)
   };
@@ -60,6 +65,7 @@ export default async (request) => {
 
   const body = await readBody(request);
   const clientId = String(body.clientId || "").slice(0, 120);
+  const workerName = sanitizeWorkerName(body.workerName);
   const action = String(body.action || "acquire");
 
   if (!clientId) {
@@ -71,13 +77,14 @@ export default async (request) => {
 
   if (action === "release") {
     if (ownsSession) await store.delete(key);
-    return json({ ok: true, owner: false, locked: false, expiresAt: null, ttlMs });
+    return json({ ok: true, owner: false, locked: false, workerName: "", expiresAt: null, ttlMs });
   }
 
   if (!isExpired(record, now) && !ownsSession) {
     return json({
       owner: false,
       locked: true,
+      workerName: sanitizeWorkerName(record.workerName),
       expiresAt: record.expiresAt,
       ttlMs: Math.max(new Date(record.expiresAt).getTime() - now, 0)
     });
@@ -85,6 +92,7 @@ export default async (request) => {
 
   const nextRecord = {
     clientId,
+    workerName,
     startedAt: ownsSession && record.startedAt ? record.startedAt : new Date(now).toISOString(),
     updatedAt: new Date(now).toISOString(),
     expiresAt: new Date(now + ttlMs).toISOString()
@@ -101,6 +109,7 @@ export default async (request) => {
   return json({
     owner: true,
     locked: false,
+    workerName,
     expiresAt: nextRecord.expiresAt,
     ttlMs
   });

@@ -94,6 +94,42 @@
       gap: 6px;
     }
 
+    .worker-panel {
+      display: grid;
+      grid-template-columns: 74px minmax(0, 1fr);
+      gap: 6px;
+      align-items: center;
+      margin: -2px 0 10px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .worker-panel label {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .worker-panel input {
+      width: 100%;
+      min-height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 0 10px;
+      font-weight: 800;
+    }
+
+    .worker-status {
+      grid-column: 1 / -1;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1.3;
+    }
+
     .lock-status {
       margin-bottom: 10px;
       padding: 10px 12px;
@@ -999,6 +1035,12 @@
       </div>
     </header>
 
+    <section class="worker-panel" aria-label="작업자 이름">
+      <label for="workerName">작업자</label>
+      <input id="workerName" type="text" inputmode="text" autocomplete="name" maxlength="12" placeholder="이름 입력">
+      <div class="worker-status" id="workerStatus">작업자 이름을 입력하세요.</div>
+    </section>
+
     <div class="lock-status hidden" id="lockStatus" role="status" aria-live="polite"></div>
     <button class="btn small admin-mode-btn hidden" id="adminModeBtn" type="button">관리자 모드</button>
 
@@ -1127,6 +1169,7 @@
     };
 
     const storageKey = "coupang-loader-message-v1";
+    const workerNameStorageKey = "coupang-loader-worker-name-v1";
     const remoteStateUrl = "/api/state";
     const shareLogUrl = "/api/share-log";
     const sessionUrl = "/api/session";
@@ -1137,6 +1180,8 @@
       topActions: document.querySelector(".top-actions"),
       lockStatus: document.querySelector("#lockStatus"),
       adminModeBtn: document.querySelector("#adminModeBtn"),
+      workerName: document.querySelector("#workerName"),
+      workerStatus: document.querySelector("#workerStatus"),
       modeToggle: document.querySelector("#modeToggle"),
       mixedToggle: document.querySelector("#mixedToggle"),
       mixedStatusSection: document.querySelector("#mixedStatusSection"),
@@ -1185,6 +1230,8 @@
     let adminWasAway = false;
     let checkingSession = false;
     let state = loadState();
+    let workerName = loadWorkerName();
+    let activeEditorName = "";
     const clientId = getClientId();
 
     function rangeNumbers(range) {
@@ -1340,6 +1387,55 @@
       return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     }
 
+    function sanitizeWorkerName(value) {
+      return String(value || "").trim().replace(/\s+/g, " ").slice(0, 12);
+    }
+
+    function loadWorkerName() {
+      try {
+        return sanitizeWorkerName(localStorage.getItem(workerNameStorageKey));
+      } catch {
+        return "";
+      }
+    }
+
+    function saveWorkerName() {
+      try {
+        if (workerName) {
+          localStorage.setItem(workerNameStorageKey, workerName);
+        } else {
+          localStorage.removeItem(workerNameStorageKey);
+        }
+      } catch {
+        // Local storage can be unavailable in a few private browser modes.
+      }
+    }
+
+    function workerNameLabel(name) {
+      return sanitizeWorkerName(name) || "이름 없음";
+    }
+
+    function updateWorkerStatus() {
+      if (!els.workerStatus) return;
+
+      if (!workerName) {
+        els.workerStatus.textContent = "작업자 이름을 입력해야 수정할 수 있습니다.";
+        return;
+      }
+
+      if (hasEditLock) {
+        els.workerStatus.textContent = `현재 수정 중: ${workerNameLabel(workerName)}`;
+        return;
+      }
+
+      if (activeEditorName) {
+        els.workerStatus.textContent = `현재 수정 중: ${workerNameLabel(activeEditorName)}`;
+        return;
+      }
+
+      els.workerStatus.textContent = `내 이름: ${workerNameLabel(workerName)}`;
+    }
+
     function applyEditorInteractivity() {
       const viewOnly = canUseRemoteStorage() && !hasEditLock && !adminEditMode;
 
@@ -1352,9 +1448,10 @@
       });
     }
 
-    function setEditLock(owner, message = "이미 작업 중에 있습니다.\n작업이 끝날 때까지 기다려주십시오.") {
+    function setEditLock(owner, message = "이미 작업 중에 있습니다.\n작업이 끝날 때까지 기다려주십시오.", sessionData = {}) {
       hasEditLock = owner || !canUseRemoteStorage();
       if (hasEditLock) adminEditMode = false;
+      activeEditorName = hasEditLock ? workerName : sanitizeWorkerName(sessionData.workerName);
 
       const waiting = canUseRemoteStorage() && !hasEditLock;
       const viewOnly = waiting && !adminEditMode;
@@ -1369,12 +1466,14 @@
       els.adminModeBtn.classList.toggle("hidden", !waiting);
       els.adminModeBtn.textContent = adminEdit ? "관리자 종료" : "관리자 모드";
       applyEditorInteractivity();
+      updateWorkerStatus();
 
       if (waiting) {
         setHistoryView(false, { silent: true });
+        const ownerLine = activeEditorName ? `현재 수정 중: ${workerNameLabel(activeEditorName)}\n` : "";
         els.lockStatus.textContent = adminEdit
-          ? "관리자 편집 모드입니다.\n다른 작업자와 동시에 수정 중입니다."
-          : "작업 화면을 보고 있습니다.\n조작은 잠겨 있습니다.";
+          ? `${ownerLine}관리자 편집 모드입니다.\n다른 작업자와 동시에 수정 중입니다.`
+          : `${ownerLine}${message}`;
         els.lockStatus.classList.remove("hidden");
         if (!document.hidden && !adminEdit) loadRemoteState({ silent: true });
         return;
@@ -1540,7 +1639,7 @@
       const response = await fetch(sessionUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, clientId }),
+        body: JSON.stringify({ action, clientId, workerName }),
         keepalive: action === "release"
       });
       if (!response.ok) throw new Error("Session request failed");
@@ -1553,12 +1652,17 @@
         return;
       }
 
+      if (!workerName) {
+        setEditLock(false, "작업자 이름을 먼저 입력하세요.");
+        return;
+      }
+
       if (checkingSession) return;
       checkingSession = true;
 
       try {
         const data = await requestEditSession(action);
-        setEditLock(Boolean(data.owner));
+        setEditLock(Boolean(data.owner), undefined, data);
       } catch {
         setEditLock(false, "작업 상태를 확인하지 못했습니다. 잠시 후 다시 확인합니다.");
       } finally {
@@ -1569,7 +1673,7 @@
     function releaseEditSession(options = {}) {
       if (!canUseRemoteStorage() || !hasEditLock) return;
 
-      const payload = JSON.stringify({ action: "release", clientId });
+      const payload = JSON.stringify({ action: "release", clientId, workerName });
       if (options.local !== false) {
         setEditLock(false, "편집 권한을 확인하는 중입니다.");
       }
@@ -1593,7 +1697,7 @@
         return;
       }
 
-      setEditLock(false, "편집 권한을 확인하는 중입니다.");
+      setEditLock(false, workerName ? "편집 권한을 확인하는 중입니다." : "작업자 이름을 먼저 입력하세요.");
       refreshEditSession("acquire");
       window.setInterval(() => {
         if (document.hidden) return;
@@ -1758,6 +1862,12 @@
 
     function toggleAdminViewMode() {
       if (!canUseRemoteStorage() || hasEditLock) return;
+
+      if (!workerName) {
+        flash("작업자 이름을 먼저 입력하세요.");
+        els.workerName.focus();
+        return;
+      }
 
       if (adminEditMode) {
         exitAdminEditMode({ reload: true });
@@ -2441,6 +2551,24 @@
 
     ["pointerdown", "click", "beforeinput", "input", "change"].forEach((eventName) => {
       els.editorPanel.addEventListener(eventName, blockLockedEditorEvent, true);
+    });
+
+    els.workerName.value = workerName;
+    updateWorkerStatus();
+    els.workerName.addEventListener("input", () => {
+      const nextName = sanitizeWorkerName(els.workerName.value);
+      const hadName = Boolean(workerName);
+      workerName = nextName;
+      saveWorkerName();
+      updateWorkerStatus();
+
+      if (!workerName) {
+        if (hasEditLock) releaseEditSession();
+        setEditLock(false, "작업자 이름을 먼저 입력하세요.");
+        return;
+      }
+
+      if (!hadName || hasEditLock) refreshEditSession(hasEditLock ? "heartbeat" : "acquire");
     });
 
     els.modeToggle.addEventListener("click", (event) => {
