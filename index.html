@@ -577,6 +577,26 @@
       font-weight: 900;
     }
 
+    .mixed-range-100 .section-title h2 {
+      background: #2563eb;
+      color: #fff;
+    }
+
+    .mixed-range-200 .section-title h2 {
+      background: #16a34a;
+      color: #fff;
+    }
+
+    .mixed-range-300 .section-title h2 {
+      background: #facc15;
+      color: #1f2937;
+    }
+
+    .mixed-range-400 .section-title h2 {
+      background: #9333ea;
+      color: #fff;
+    }
+
     .mixed-actions {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -631,6 +651,30 @@
 
     .number-grid button.current {
       box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.55);
+    }
+
+    .number-grid button.number-100.active {
+      border-color: #1d4ed8;
+      background: #2563eb;
+      color: #fff;
+    }
+
+    .number-grid button.number-200.active {
+      border-color: #15803d;
+      background: #16a34a;
+      color: #fff;
+    }
+
+    .number-grid button.number-300.active {
+      border-color: #ca8a04;
+      background: #facc15;
+      color: #1f2937;
+    }
+
+    .number-grid button.number-400.active {
+      border-color: #7e22ce;
+      background: #9333ea;
+      color: #fff;
     }
 
     .btn {
@@ -2159,7 +2203,7 @@
 
     function makeMixedGroup(range) {
       const section = document.createElement("div");
-      section.className = "mixed-range-group";
+      section.className = `mixed-range-group mixed-range-${range.label}`;
       const title = document.createElement("div");
       title.className = "section-title";
 
@@ -2193,6 +2237,7 @@
         button.type = "button";
         button.textContent = String(number);
         button.dataset.number = String(number);
+        button.classList.add(`number-${range.label}`);
         button.classList.toggle("active", currentLine.has(number));
         button.classList.toggle("current", currentLine.has(number));
         grid.append(button);
