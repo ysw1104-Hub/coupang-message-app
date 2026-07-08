@@ -16,15 +16,17 @@
   <style>
     :root {
       color-scheme: light;
-      --bg: #f6f7f9;
+      --bg: #eef2f7;
       --panel: #ffffff;
-      --ink: #15171a;
-      --muted: #69707a;
-      --line: #dfe3e8;
-      --accent: #2364aa;
-      --accent-2: #1f7a5c;
+      --ink: #111827;
+      --muted: #64748b;
+      --line: #d8e2ee;
+      --accent: #2563eb;
+      --accent-2: #16a34a;
       --danger: #b42318;
-      --shadow: 0 8px 24px rgba(21, 23, 26, 0.07);
+      --yellow: #eab308;
+      --purple: #9333ea;
+      --shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
     }
 
     * {
@@ -34,9 +36,7 @@
     body {
       margin: 0;
       min-height: 100vh;
-      background:
-        linear-gradient(180deg, rgba(35, 100, 170, 0.08), rgba(246, 247, 249, 0) 300px),
-        var(--bg);
+      background: var(--bg);
       color: var(--ink);
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
@@ -58,21 +58,27 @@
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
       gap: 10px;
-      align-items: end;
+      align-items: center;
       margin-bottom: 10px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
     }
 
     h1 {
       margin: 0;
-      font-size: 26px;
-      line-height: 1.05;
+      font-size: 19px;
+      line-height: 1.15;
       letter-spacing: 0;
     }
 
     .sub {
       margin: 8px 0 0;
       color: var(--muted);
-      font-size: 13px;
+      font-size: 12px;
+      font-weight: 700;
     }
 
     .toolbar {
@@ -130,6 +136,7 @@
       border: 1px solid var(--line);
       border-radius: 8px;
       box-shadow: var(--shadow);
+      overflow: hidden;
     }
 
     .preview {
@@ -332,10 +339,10 @@
 
     .load-row {
       display: grid;
-      grid-template-columns: 72px 56px minmax(44px, 1fr) 56px 86px 62px;
-      gap: 6px;
+      grid-template-columns: 64px 42px minmax(42px, 1fr) 42px 72px 54px;
+      gap: 5px;
       align-items: center;
-      margin-bottom: 8px;
+      margin-bottom: 7px;
     }
 
     .place-name,
@@ -371,7 +378,7 @@
     .place-name.place-yellow {
       border-color: #d97706;
       background: #facc15;
-      color: #fff;
+      color: #111827;
     }
 
     .place-name.place-purple {
@@ -629,7 +636,7 @@
     .btn {
       min-height: 44px;
       border: 1px solid var(--line);
-      border-radius: 6px;
+      border-radius: 7px;
       background: #fff;
       color: var(--ink);
       padding: 0 13px;
@@ -664,7 +671,10 @@
     }
 
     .btn.complete {
-      padding: 0 5px;
+      padding: 0 6px;
+      border-color: var(--accent-2);
+      background: #ecfdf5;
+      color: #166534;
       font-size: 12px;
       line-height: 1.15;
       white-space: pre-line;
@@ -688,13 +698,33 @@
     }
 
     .btn.clear-place {
-      color: var(--danger);
+      border-color: #dc2626;
+      background: #fff;
+      color: #b91c1c;
       font-size: 13px;
     }
 
     .preview-head {
-      display: block;
+      display: grid;
+      gap: 8px;
       margin-bottom: 8px;
+    }
+
+    .preview-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .mode-badge {
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: #111827;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 900;
+      white-space: nowrap;
     }
 
     .preview-head .toolbar {
@@ -709,7 +739,7 @@
       padding: 16px;
       border: 1px solid var(--line);
       border-radius: 8px;
-      background: #fbfcfd;
+      background: #fff;
       white-space: pre-wrap;
       overflow-y: auto;
       overflow-x: hidden;
@@ -719,6 +749,30 @@
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
       font-size: 16px;
     }
+
+    .message-box.message-rich {
+      display: grid;
+      align-content: start;
+      gap: 4px;
+    }
+
+    .message-mix-line {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .message-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      flex: 0 0 auto;
+    }
+
+    .message-dot-100 { background: var(--accent); }
+    .message-dot-200 { background: var(--accent-2); }
+    .message-dot-300 { background: var(--yellow); }
+    .message-dot-400 { background: var(--purple); }
 
     body.read-only-mode .message-box {
       height: auto;
@@ -758,12 +812,12 @@
 
     @media (max-width: 860px) {
       header {
-        display: block;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
       }
 
       .toolbar {
         justify-content: stretch;
-        margin-top: 14px;
       }
 
       .toolbar .btn {
@@ -810,7 +864,7 @@
       }
 
       .load-row {
-        grid-template-columns: minmax(42px, 0.9fr) minmax(40px, 0.8fr) minmax(32px, 0.6fr) minmax(40px, 0.8fr) minmax(60px, 1.1fr) minmax(42px, 0.8fr);
+        grid-template-columns: minmax(42px, 0.9fr) minmax(38px, 0.75fr) minmax(34px, 0.65fr) minmax(38px, 0.75fr) minmax(62px, 1.1fr) minmax(46px, 0.85fr);
         gap: 4px;
       }
 
@@ -884,6 +938,10 @@
     <div class="grid">
       <section class="panel preview" aria-label="생성된 메시지">
         <div class="preview-head">
+          <div class="preview-title-row">
+            <h2>카톡에 올릴 문구</h2>
+            <span class="mode-badge" id="previewModeBadge">D1상차</span>
+          </div>
           <div class="toolbar">
             <button class="btn primary" id="copyBtn" type="button">복사</button>
             <button class="btn green" id="shareBtn" type="button">카톡 공유</button>
@@ -1015,6 +1073,7 @@
       editorPanel: document.querySelector(".editor"),
       copyBtn: document.querySelector("#copyBtn"),
       shareBtn: document.querySelector("#shareBtn"),
+      previewModeBadge: document.querySelector("#previewModeBadge"),
       resetBtn: document.querySelector("#resetBtn"),
       historyBtn: document.querySelector("#historyBtn"),
       historyRefreshBtn: document.querySelector("#historyRefreshBtn"),
@@ -1862,6 +1921,7 @@
         button.classList.toggle("active", button.dataset.mixed === state.mixed);
       });
 
+      els.previewModeBadge.textContent = state.mode;
       els.mixedStatusSection.classList.toggle("hidden", isMixedMode());
       els.mixedDetailSection.classList.toggle("hidden", !isMixedMode());
       els.loadSection.classList.toggle("hidden", isMixedMode());
@@ -2095,6 +2155,49 @@
       els.mixedGroups.replaceChildren(...mixedRanges.map(makeMixedGroup));
     }
 
+    function mixedLineDotClass(line) {
+      const number = Number(String(line || "").match(/\d{3}/)?.[0] || 0);
+      if (number >= 100 && number < 200) return "message-dot message-dot-100";
+      if (number >= 200 && number < 300) return "message-dot message-dot-200";
+      if (number >= 300 && number < 400) return "message-dot message-dot-300";
+      if (number >= 400 && number < 500) return "message-dot message-dot-400";
+      return "";
+    }
+
+    function renderMessagePreview(message) {
+      els.message.classList.toggle("empty", !message);
+      els.message.classList.toggle("message-rich", Boolean(message && isMixedMode()));
+      els.message.replaceChildren();
+
+      if (!message) {
+        els.message.textContent = "시간을 입력하면 문구가 생성됩니다.";
+        return;
+      }
+
+      if (!isMixedMode()) {
+        els.message.textContent = message;
+        return;
+      }
+
+      message.split("\n").forEach((line) => {
+        const row = document.createElement("div");
+        const dotClass = mixedLineDotClass(line);
+
+        if (dotClass) {
+          row.className = "message-mix-line";
+          const dot = document.createElement("span");
+          dot.className = dotClass;
+          const text = document.createElement("span");
+          text.textContent = line;
+          row.append(dot, text);
+        } else {
+          row.textContent = line || " ";
+        }
+
+        els.message.append(row);
+      });
+    }
+
     function render() {
       els.memo.value = state.memo;
       els.kakaoKey.value = state.kakaoKey;
@@ -2108,8 +2211,7 @@
     function update() {
       saveState();
       const message = buildMessage();
-      els.message.textContent = message || "시간을 입력하면 문구가 생성됩니다.";
-      els.message.classList.toggle("empty", !message);
+      renderMessagePreview(message);
     }
 
     function flash(text) {
