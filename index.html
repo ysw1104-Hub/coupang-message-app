@@ -1379,7 +1379,7 @@
     const remoteStateUrl = "/api/state";
     const shareLogUrl = "/api/share-log";
     const sessionUrl = "/api/session";
-    const sessionCheckMs = 1500;
+    const sessionCheckMs = 800;
     const waitingSyncMs = 1000;
     const adminPassword = "1104";
     const els = {
@@ -1453,6 +1453,7 @@
     let state = loadState();
     let workerName = loadWorkerName();
     let activeEditorName = "";
+    let activeWaiterNames = [];
     let adminPanelUnlocked = false;
     let adminPriorityNames = [];
     let adminWorkerNames = [];
@@ -1639,6 +1640,14 @@
       return sanitizeWorkerName(name) || "이름 없음";
     }
 
+    function normalizeSessionNames(value) {
+      return [...new Set((Array.isArray(value) ? value : []).map(sanitizeWorkerName).filter(Boolean))].slice(0, 10);
+    }
+
+    function waitersText() {
+      return activeWaiterNames.length ? `대기 중: ${activeWaiterNames.join(", ")}` : "";
+    }
+
     function updateWorkerStatus() {
       if (!els.workerStatus) return;
       if (els.workerNameDisplay) els.workerNameDisplay.textContent = workerNameLabel(workerName);
@@ -1649,12 +1658,12 @@
       }
 
       if (hasEditLock) {
-        els.workerStatus.textContent = `현재 수정 중: ${workerNameLabel(workerName)}`;
+        els.workerStatus.textContent = [`현재 수정 중: ${workerNameLabel(workerName)}`, waitersText()].filter(Boolean).join("\n");
         return;
       }
 
       if (activeEditorName) {
-        els.workerStatus.textContent = `현재 수정 중: ${workerNameLabel(activeEditorName)}`;
+        els.workerStatus.textContent = [`현재 수정 중: ${workerNameLabel(activeEditorName)}`, waitersText()].filter(Boolean).join("\n");
         return;
       }
 
@@ -1712,6 +1721,7 @@
       hasEditLock = owner || !canUseRemoteStorage();
       if (hasEditLock) adminEditMode = false;
       activeEditorName = hasEditLock ? workerName : sanitizeWorkerName(sessionData.workerName);
+      activeWaiterNames = normalizeSessionNames(sessionData.waiters).filter((name) => name !== workerName);
 
       const waiting = canUseRemoteStorage() && !hasEditLock;
       const viewOnly = waiting && !adminEditMode;
@@ -1731,9 +1741,10 @@
       if (waiting) {
         setHistoryView(false, { silent: true });
         const ownerLine = activeEditorName ? `현재 수정 중: ${workerNameLabel(activeEditorName)}\n` : "";
+        const waitersLine = waitersText() ? `${waitersText()}\n` : "";
         els.lockStatus.textContent = adminEdit
-          ? `${ownerLine}관리자 편집 모드입니다.\n다른 작업자와 동시에 수정 중입니다.`
-          : `${ownerLine}${message}`;
+          ? `${ownerLine}${waitersLine}관리자 편집 모드입니다.\n다른 작업자와 동시에 수정 중입니다.`
+          : `${ownerLine}${waitersLine}${message}`;
         els.lockStatus.classList.remove("hidden");
         if (!document.hidden && !adminEdit) loadRemoteState({ silent: true });
         return;
@@ -1811,8 +1822,17 @@
         const response = await fetch(remoteStateUrl, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ state: sharedStatePayload() })
+          body: JSON.stringify({
+            state: sharedStatePayload(),
+            clientId,
+            adminEdit: adminEditMode,
+            adminPassword: adminEditMode ? adminPassword : ""
+          })
         });
+        if (response.status === 423) {
+          setEditLock(false, "다른 작업자가 수정권을 가지고 있습니다.\n작업이 끝날 때까지 기다려주십시오.");
+          throw new Error("Edit lock required");
+        }
         if (!response.ok) throw new Error("Remote save failed");
 
         const data = await response.json();

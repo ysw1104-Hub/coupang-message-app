@@ -1,9 +1,11 @@
 import { getStore } from "@netlify/blobs";
 
 const key = "edit-session";
+const waitersKey = "edit-waiters";
 const priorityKey = "worker-priority";
 const workerNamesKey = "worker-names";
 const ttlMs = 6 * 1000;
+const waiterTtlMs = 12 * 1000;
 const adminPassword = "1104";
 const defaultPriorityNames = ["선웅"];
 
@@ -92,15 +94,63 @@ function priorityRank(name, priorityNames) {
   return index === -1 ? Number.POSITIVE_INFINITY : index;
 }
 
-function publicSession(record, now) {
+async function readWaiters(store, now) {
+  const saved = await store.get(waitersKey, { type: "json", consistency: "strong" });
+  const waiters = Array.isArray(saved?.waiters) ? saved.waiters : [];
+  const activeWaiters = waiters
+    .filter((item) => item?.clientId && item?.expiresAt && new Date(item.expiresAt).getTime() > now)
+    .map((item) => ({
+      clientId: String(item.clientId).slice(0, 120),
+      workerName: sanitizeWorkerName(item.workerName),
+      expiresAt: item.expiresAt
+    }))
+    .filter((item) => item.workerName);
+
+  if (activeWaiters.length !== waiters.length) {
+    await store.setJSON(waitersKey, { waiters: activeWaiters, updatedAt: new Date(now).toISOString() });
+  }
+
+  return activeWaiters;
+}
+
+async function upsertWaiter(store, clientId, workerName, now) {
+  const worker = sanitizeWorkerName(workerName);
+  if (!worker) return [];
+
+  const waiters = (await readWaiters(store, now)).filter((item) => item.clientId !== clientId);
+  waiters.push({
+    clientId,
+    workerName: worker,
+    expiresAt: new Date(now + waiterTtlMs).toISOString()
+  });
+  await store.setJSON(waitersKey, { waiters, updatedAt: new Date(now).toISOString() });
+  return waiters;
+}
+
+async function removeWaiter(store, clientId, now) {
+  const waiters = (await readWaiters(store, now)).filter((item) => item.clientId !== clientId);
+  await store.setJSON(waitersKey, { waiters, updatedAt: new Date(now).toISOString() });
+  return waiters;
+}
+
+function publicWaiterNames(waiters, ownerClientId = "") {
+  return [...new Set(waiters
+    .filter((item) => item.clientId !== ownerClientId)
+    .map((item) => sanitizeWorkerName(item.workerName))
+    .filter(Boolean))];
+}
+
+async function publicSession(store, record, now) {
+  const waiters = await readWaiters(store, now);
   if (isExpired(record, now)) {
-    return { locked: false, owner: false, workerName: "", expiresAt: null, ttlMs };
+    return { locked: false, owner: false, workerName: "", waiters: publicWaiterNames(waiters), expiresAt: null, ttlMs };
   }
 
   return {
     locked: true,
     owner: false,
     workerName: sanitizeWorkerName(record.workerName),
+    waiters: publicWaiterNames(waiters, record.clientId),
     expiresAt: record.expiresAt,
     ttlMs: Math.max(new Date(record.expiresAt).getTime() - now, 0)
   };
@@ -114,7 +164,7 @@ export default async (request) => {
 
   if (request.method === "GET") {
     const record = await store.get(key, { type: "json", consistency: "strong" });
-    return json(publicSession(record, now));
+    return json(await publicSession(store, record, now));
   }
 
   if (request.method !== "POST") {
@@ -156,7 +206,8 @@ export default async (request) => {
 
   if (action === "release") {
     if (ownsSession) await store.delete(key);
-    return json({ ok: true, owner: false, locked: false, workerName: "", expiresAt: null, ttlMs });
+    await removeWaiter(store, clientId, now);
+    return json({ ok: true, owner: false, locked: false, workerName: "", waiters: [], expiresAt: null, ttlMs });
   }
 
   if (!isExpired(record, now) && !ownsSession) {
@@ -165,10 +216,12 @@ export default async (request) => {
     const ownerRank = priorityRank(record.workerName, priorityNames);
 
     if (requesterRank >= ownerRank) {
+      const waiters = await upsertWaiter(store, clientId, workerName, now);
       return json({
         owner: false,
         locked: true,
         workerName: sanitizeWorkerName(record.workerName),
+        waiters: publicWaiterNames(waiters, record.clientId),
         priorityNames,
         expiresAt: record.expiresAt,
         ttlMs: Math.max(new Date(record.expiresAt).getTime() - now, 0)
@@ -185,17 +238,19 @@ export default async (request) => {
   };
 
   await store.setJSON(key, nextRecord);
+  const waiters = await removeWaiter(store, clientId, now);
 
   await new Promise((resolve) => setTimeout(resolve, 120));
   const confirmedRecord = await store.get(key, { type: "json", consistency: "strong" });
   if (confirmedRecord?.clientId !== clientId) {
-    return json(publicSession(confirmedRecord, Date.now()));
+    return json(await publicSession(store, confirmedRecord, Date.now()));
   }
 
   return json({
     owner: true,
     locked: false,
     workerName,
+    waiters: publicWaiterNames(waiters, clientId),
     expiresAt: nextRecord.expiresAt,
     ttlMs
   });

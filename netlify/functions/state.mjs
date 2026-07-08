@@ -1,8 +1,10 @@
 import { getStore } from "@netlify/blobs";
 
 const key = "shared-state";
+const sessionKey = "edit-session";
 const kstOffsetMs = 9 * 60 * 60 * 1000;
 const resetHourKst = 19;
+const adminPassword = "1104";
 
 const defaultState = {
   mode: "D1상차",
@@ -54,6 +56,20 @@ function sanitizeState(value) {
     feeders: value.feeders,
     memo: value.memo
   };
+}
+
+function isExpiredSession(record, now) {
+  return !record?.clientId || !record?.expiresAt || new Date(record.expiresAt).getTime() <= now.getTime();
+}
+
+async function canWriteState(store, body, now) {
+  if (body?.adminEdit && String(body.adminPassword || "") === adminPassword) return true;
+
+  const clientId = String(body?.clientId || "").slice(0, 120);
+  if (!clientId) return false;
+
+  const session = await store.get(sessionKey, { type: "json", consistency: "strong" });
+  return !isExpiredSession(session, now) && session.clientId === clientId;
 }
 
 function cloneDefaultState() {
@@ -114,6 +130,10 @@ export default async (request) => {
 
     if (!state) {
       return json({ error: "Invalid state" }, { status: 400 });
+    }
+
+    if (!(await canWriteState(store, body, now))) {
+      return json({ error: "Edit lock required" }, { status: 423 });
     }
 
     const record = {
