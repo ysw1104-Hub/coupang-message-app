@@ -677,6 +677,21 @@
       color: #fff;
     }
 
+    .number-grid button.range-break {
+      grid-column-start: 1;
+      margin-top: 10px;
+      position: relative;
+    }
+
+    .number-grid button.range-break::before {
+      content: "";
+      position: absolute;
+      top: -9px;
+      left: 0;
+      right: 0;
+      border-top: 1px dashed #d8e2ee;
+    }
+
     .btn {
       min-height: 44px;
       border: 1px solid var(--line);
@@ -2238,6 +2253,7 @@
         button.textContent = String(number);
         button.dataset.number = String(number);
         button.classList.add(`number-${range.label}`);
+        button.classList.toggle("range-break", range.label === "400" && number === 417);
         button.classList.toggle("active", currentLine.has(number));
         button.classList.toggle("current", currentLine.has(number));
         grid.append(button);
