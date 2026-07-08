@@ -1800,6 +1800,14 @@
       return /^(?:🟦|🟩|🟨|🟪)\s/u.test(String(line || ""));
     }
 
+    function messageTitleLabel(title) {
+      const label = String(title || defaults.mode);
+      const compact = label.replace(/\s+/g, "");
+      if (compact.includes("상차")) return `🚚 ${label}`;
+      if (compact.includes("혼적")) return `📦 ${label}`;
+      return label;
+    }
+
     function formatMixedNumbers() {
       return sortedMixedLineEntries()
         .map((entry) => `${mixedLineSquareEmoji(entry.line)}${entry.line.map(String).join(".")}`);
@@ -1837,7 +1845,7 @@
     function buildMessage() {
       const lines = [];
       const title = state.mode || defaults.mode;
-      lines.push(title);
+      lines.push(messageTitleLabel(title));
 
       if (isMixedMode()) {
         lines.push(...formatMixedNumbers());
@@ -1869,7 +1877,7 @@
           .filter(Boolean);
 
         lines.push("");
-        lines.push("피더 휴게");
+        lines.push("☕ 피더 휴게");
         lines.push(...feederLines);
       }
 
