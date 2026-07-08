@@ -2,6 +2,7 @@ import { getStore } from "@netlify/blobs";
 
 const key = "edit-session";
 const priorityKey = "worker-priority";
+const workerNamesKey = "worker-names";
 const ttlMs = 6 * 1000;
 const adminPassword = "1104";
 const defaultPriorityNames = ["선웅"];
@@ -43,6 +44,31 @@ function normalizePriorityNames(value) {
     : String(value || "").split(/[\n,>]+/);
 
   return [...new Set(rawNames.map(sanitizeWorkerName).filter(Boolean))].slice(0, 20);
+}
+
+function normalizeWorkerNames(value) {
+  const rawNames = Array.isArray(value)
+    ? value
+    : String(value || "").split(/[\n,>]+/);
+
+  return [...new Set(rawNames.map(sanitizeWorkerName).filter(Boolean))].slice(0, 100);
+}
+
+async function readWorkerNames(store) {
+  const saved = await store.get(workerNamesKey, { type: "json", consistency: "strong" });
+  const priorityNames = await readPriorityNames(store);
+  return normalizeWorkerNames([...(saved?.workerNames || []), ...defaultPriorityNames, ...priorityNames]);
+}
+
+async function registerWorkerName(store, name) {
+  const worker = sanitizeWorkerName(name);
+  if (!worker) return;
+
+  const workerNames = normalizeWorkerNames([...(await readWorkerNames(store)), worker]);
+  await store.setJSON(workerNamesKey, {
+    workerNames,
+    updatedAt: new Date().toISOString()
+  });
 }
 
 async function readPriorityNames(store) {
@@ -104,16 +130,25 @@ export default async (request) => {
     return json({ error: "clientId is required" }, { status: 400 });
   }
 
+  await registerWorkerName(store, workerName);
+
   if (action === "admin-get-priority" || action === "admin-save-priority") {
     if (String(body.adminPassword || "") !== adminPassword) {
       return json({ error: "Invalid admin password" }, { status: 403 });
     }
 
     if (action === "admin-get-priority") {
-      return json({ priorityNames: await readPriorityNames(store) });
+      return json({
+        priorityNames: await readPriorityNames(store),
+        workerNames: await readWorkerNames(store)
+      });
     }
 
-    return json({ priorityNames: await savePriorityNames(store, body.priorityNames) });
+    const priorityNames = await savePriorityNames(store, body.priorityNames);
+    return json({
+      priorityNames,
+      workerNames: await readWorkerNames(store)
+    });
   }
 
   const record = await store.get(key, { type: "json", consistency: "strong" });

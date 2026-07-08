@@ -231,14 +231,57 @@
       font-weight: 900;
     }
 
-    .admin-field textarea {
-      min-height: 116px;
+    .priority-selected,
+    .worker-choice-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      min-height: 44px;
+      padding: 8px;
       border: 1px solid var(--line);
       border-radius: 7px;
-      padding: 10px;
-      resize: vertical;
+      background: #f8fafc;
+    }
+
+    .priority-empty,
+    .worker-choice-empty {
+      display: flex;
+      align-items: center;
+      color: var(--muted);
+      font-size: 13px;
       font-weight: 800;
-      line-height: 1.45;
+    }
+
+    .priority-chip,
+    .worker-choice {
+      min-height: 34px;
+      border: 2px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      color: var(--ink);
+      padding: 0 11px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .priority-chip {
+      border-color: #2563eb;
+      background: #eff6ff;
+      color: #1d4ed8;
+    }
+
+    .worker-choice.selected {
+      border-color: #94a3b8;
+      background: #e2e8f0;
+      color: #64748b;
+    }
+
+    .admin-help {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1.35;
     }
 
     .admin-panel-actions {
@@ -1191,8 +1234,11 @@
         <button class="btn small" id="adminCloseBtn" type="button">닫기</button>
       </div>
       <div class="admin-field">
-        <label for="priorityNames">수정 우선순위</label>
-        <textarea id="priorityNames" placeholder="선웅&#10;종훈&#10;진국&#10;상훈"></textarea>
+        <label>수정 우선순위</label>
+        <div class="priority-selected" id="prioritySelected"></div>
+        <div class="admin-help">등록된 이름을 누르면 우선순위에 추가됩니다. 우선순위 이름을 누르면 빠집니다.</div>
+        <label>등록된 이름</label>
+        <div class="worker-choice-list" id="workerChoiceList"></div>
       </div>
       <div class="admin-panel-actions">
         <button class="btn primary" id="adminSavePriorityBtn" type="button">우선순위 저장</button>
@@ -1372,7 +1418,8 @@
       adminPanelBtn: document.querySelector("#adminPanelBtn"),
       adminPanel: document.querySelector("#adminPanel"),
       adminCloseBtn: document.querySelector("#adminCloseBtn"),
-      priorityNames: document.querySelector("#priorityNames"),
+      prioritySelected: document.querySelector("#prioritySelected"),
+      workerChoiceList: document.querySelector("#workerChoiceList"),
       adminSavePriorityBtn: document.querySelector("#adminSavePriorityBtn"),
       adminReloadPriorityBtn: document.querySelector("#adminReloadPriorityBtn"),
       adminPriorityStatus: document.querySelector("#adminPriorityStatus"),
@@ -1407,6 +1454,8 @@
     let workerName = loadWorkerName();
     let activeEditorName = "";
     let adminPanelUnlocked = false;
+    let adminPriorityNames = [];
+    let adminWorkerNames = [];
     const clientId = getClientId();
 
     function rangeNumbers(range) {
@@ -1867,34 +1916,72 @@
       return response.json();
     }
 
-    function priorityNamesFromText(text) {
-      return [...new Set(String(text || "")
-        .split(/[\n,>]+/)
-        .map(sanitizeWorkerName)
-        .filter(Boolean))]
-        .slice(0, 20);
-    }
-
     function setAdminStatus(text) {
       els.adminPriorityStatus.textContent = text;
     }
 
+    function normalizeNameList(value, limit = 100) {
+      const rawNames = Array.isArray(value) ? value : [];
+      return [...new Set(rawNames.map(sanitizeWorkerName).filter(Boolean))].slice(0, limit);
+    }
+
+    function renderAdminPriorityControls() {
+      els.prioritySelected.replaceChildren();
+      els.workerChoiceList.replaceChildren();
+
+      if (!adminPriorityNames.length) {
+        const empty = document.createElement("div");
+        empty.className = "priority-empty";
+        empty.textContent = "아직 선택된 우선순위가 없습니다.";
+        els.prioritySelected.append(empty);
+      } else {
+        adminPriorityNames.forEach((name, index) => {
+          const button = document.createElement("button");
+          button.className = "priority-chip";
+          button.type = "button";
+          button.textContent = `${index + 1}. ${name}`;
+          button.dataset.priorityName = name;
+          els.prioritySelected.append(button);
+        });
+      }
+
+      if (!adminWorkerNames.length) {
+        const empty = document.createElement("div");
+        empty.className = "worker-choice-empty";
+        empty.textContent = "아직 등록된 이름이 없습니다.";
+        els.workerChoiceList.append(empty);
+        return;
+      }
+
+      const selectedNames = new Set(adminPriorityNames);
+      adminWorkerNames.forEach((name) => {
+        const button = document.createElement("button");
+        button.className = "worker-choice";
+        button.classList.toggle("selected", selectedNames.has(name));
+        button.type = "button";
+        button.textContent = name;
+        button.dataset.workerChoice = name;
+        els.workerChoiceList.append(button);
+      });
+    }
+
     async function loadPriorityNames() {
       const data = await requestAdminSession("admin-get-priority");
-      const names = Array.isArray(data.priorityNames) ? data.priorityNames.map(sanitizeWorkerName).filter(Boolean) : [];
-      els.priorityNames.value = names.join("\n");
-      setAdminStatus(names.length
-        ? `현재 우선순위: ${names.join(" > ")}`
+      adminPriorityNames = normalizeNameList(data.priorityNames, 20);
+      adminWorkerNames = normalizeNameList(data.workerNames, 100);
+      renderAdminPriorityControls();
+      setAdminStatus(adminPriorityNames.length
+        ? `현재 우선순위: ${adminPriorityNames.join(" > ")}`
         : "저장된 우선순위가 없습니다.");
     }
 
     async function savePriorityNames() {
-      const priorityNames = priorityNamesFromText(els.priorityNames.value);
-      const data = await requestAdminSession("admin-save-priority", { priorityNames });
-      const savedNames = Array.isArray(data.priorityNames) ? data.priorityNames.map(sanitizeWorkerName).filter(Boolean) : priorityNames;
-      els.priorityNames.value = savedNames.join("\n");
-      setAdminStatus(savedNames.length
-        ? `저장됨: ${savedNames.join(" > ")}`
+      const data = await requestAdminSession("admin-save-priority", { priorityNames: adminPriorityNames });
+      adminPriorityNames = normalizeNameList(data.priorityNames, 20);
+      adminWorkerNames = normalizeNameList(data.workerNames, 100);
+      renderAdminPriorityControls();
+      setAdminStatus(adminPriorityNames.length
+        ? `저장됨: ${adminPriorityNames.join(" > ")}`
         : "우선순위를 비웠습니다. 먼저 접속한 사람이 수정권을 잡습니다.");
       refreshEditSession(hasEditLock ? "heartbeat" : "acquire");
     }
@@ -2950,6 +3037,35 @@
     els.historyBtn.addEventListener("click", toggleShareHistory);
     els.adminPanelBtn.addEventListener("click", openAdminPanel);
     els.adminCloseBtn.addEventListener("click", closeAdminPanel);
+    els.workerChoiceList.addEventListener("click", (event) => {
+      const button = event.target.closest("button[data-worker-choice]");
+      if (!button) return;
+
+      const name = sanitizeWorkerName(button.dataset.workerChoice);
+      if (!name) return;
+
+      if (adminPriorityNames.includes(name)) {
+        adminPriorityNames = adminPriorityNames.filter((item) => item !== name);
+      } else {
+        adminPriorityNames = [...adminPriorityNames, name].slice(0, 20);
+      }
+
+      renderAdminPriorityControls();
+      setAdminStatus(adminPriorityNames.length
+        ? `선택됨: ${adminPriorityNames.join(" > ")}`
+        : "선택된 우선순위가 없습니다.");
+    });
+    els.prioritySelected.addEventListener("click", (event) => {
+      const button = event.target.closest("button[data-priority-name]");
+      if (!button) return;
+
+      const name = sanitizeWorkerName(button.dataset.priorityName);
+      adminPriorityNames = adminPriorityNames.filter((item) => item !== name);
+      renderAdminPriorityControls();
+      setAdminStatus(adminPriorityNames.length
+        ? `선택됨: ${adminPriorityNames.join(" > ")}`
+        : "선택된 우선순위가 없습니다.");
+    });
     els.adminReloadPriorityBtn.addEventListener("click", async () => {
       setAdminStatus("우선순위를 불러오는 중입니다.");
       try {
