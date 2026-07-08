@@ -1,7 +1,10 @@
 import { getStore } from "@netlify/blobs";
 
 const key = "edit-session";
+const priorityKey = "worker-priority";
 const ttlMs = 6 * 1000;
+const adminPassword = "1104";
+const defaultPriorityNames = ["선웅"];
 
 const jsonHeaders = {
   "Content-Type": "application/json; charset=utf-8",
@@ -32,6 +35,35 @@ function isExpired(record, now) {
 
 function sanitizeWorkerName(value) {
   return String(value || "").trim().replace(/\s+/g, " ").slice(0, 12);
+}
+
+function normalizePriorityNames(value) {
+  const rawNames = Array.isArray(value)
+    ? value
+    : String(value || "").split(/[\n,>]+/);
+
+  return [...new Set(rawNames.map(sanitizeWorkerName).filter(Boolean))].slice(0, 20);
+}
+
+async function readPriorityNames(store) {
+  const saved = await store.get(priorityKey, { type: "json", consistency: "strong" });
+  if (saved && Array.isArray(saved.priorityNames)) return normalizePriorityNames(saved.priorityNames);
+  return defaultPriorityNames;
+}
+
+async function savePriorityNames(store, names) {
+  const priorityNames = normalizePriorityNames(names);
+  await store.setJSON(priorityKey, {
+    priorityNames,
+    updatedAt: new Date().toISOString()
+  });
+  return priorityNames;
+}
+
+function priorityRank(name, priorityNames) {
+  const normalized = sanitizeWorkerName(name);
+  const index = priorityNames.findIndex((item) => item === normalized);
+  return index === -1 ? Number.POSITIVE_INFINITY : index;
 }
 
 function publicSession(record, now) {
@@ -72,6 +104,18 @@ export default async (request) => {
     return json({ error: "clientId is required" }, { status: 400 });
   }
 
+  if (action === "admin-get-priority" || action === "admin-save-priority") {
+    if (String(body.adminPassword || "") !== adminPassword) {
+      return json({ error: "Invalid admin password" }, { status: 403 });
+    }
+
+    if (action === "admin-get-priority") {
+      return json({ priorityNames: await readPriorityNames(store) });
+    }
+
+    return json({ priorityNames: await savePriorityNames(store, body.priorityNames) });
+  }
+
   const record = await store.get(key, { type: "json", consistency: "strong" });
   const ownsSession = record?.clientId === clientId;
 
@@ -81,13 +125,20 @@ export default async (request) => {
   }
 
   if (!isExpired(record, now) && !ownsSession) {
-    return json({
-      owner: false,
-      locked: true,
-      workerName: sanitizeWorkerName(record.workerName),
-      expiresAt: record.expiresAt,
-      ttlMs: Math.max(new Date(record.expiresAt).getTime() - now, 0)
-    });
+    const priorityNames = await readPriorityNames(store);
+    const requesterRank = priorityRank(workerName, priorityNames);
+    const ownerRank = priorityRank(record.workerName, priorityNames);
+
+    if (requesterRank >= ownerRank) {
+      return json({
+        owner: false,
+        locked: true,
+        workerName: sanitizeWorkerName(record.workerName),
+        priorityNames,
+        expiresAt: record.expiresAt,
+        ttlMs: Math.max(new Date(record.expiresAt).getTime() - now, 0)
+      });
+    }
   }
 
   const nextRecord = {
