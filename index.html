@@ -538,6 +538,11 @@
       background: #fef3c7;
     }
 
+    .mixed-token-400 {
+      color: #7e22ce;
+      background: #f3e8ff;
+    }
+
     .mixed-line-empty {
       color: var(--muted);
       font-size: 13px;
@@ -1022,7 +1027,8 @@
     const mixedRanges = [
       { label: "100", start: 101, end: 118 },
       { label: "200", start: 201, end: 219 },
-      { label: "300", start: 301, end: 314 }
+      { label: "300", start: 301, end: 314 },
+      { label: "400", start: 401, end: 424 }
     ];
     const placeColorClasses = ["place-blue", "place-green", "place-red", "place-yellow", "place-purple"];
     const placeColorDots = ["🔵", "🟢", "🔴", "🟡", "🟣"];
@@ -2049,7 +2055,8 @@
     function mixedNumberClass(number) {
       if (number >= 100 && number < 200) return "mixed-token mixed-token-100";
       if (number >= 200 && number < 300) return "mixed-token mixed-token-200";
-      return "mixed-token mixed-token-300";
+      if (number >= 300 && number < 400) return "mixed-token mixed-token-300";
+      return "mixed-token mixed-token-400";
     }
 
     function makeMixedLineButtons() {
