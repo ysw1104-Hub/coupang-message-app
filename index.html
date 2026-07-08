@@ -1029,6 +1029,10 @@
       mixed: "없음",
       mixedLines: [[]],
       currentMixedLine: 0,
+      mixedSets: {
+        d1: { mixedLines: [[]], currentMixedLine: 0 },
+        d2: { mixedLines: [[]], currentMixedLine: 0 }
+      },
       places: [
         { name: "여의", time: "" },
         { name: "미니", time: "" },
@@ -1125,6 +1129,13 @@
       return state.mode === "D1 혼적" || state.mode === "D2 혼적";
     }
 
+    function mixedModeKey(mode = state.mode) {
+      const normalized = String(mode || "").replace(/\s+/g, "");
+      if (normalized === "D1혼적") return "d1";
+      if (normalized === "D2혼적") return "d2";
+      return "";
+    }
+
     function showsFeeders() {
       return state.mode === "D1상차";
     }
@@ -1140,7 +1151,8 @@
       return new Set(mixedRanges.flatMap(rangeNumbers));
     }
 
-    function normalizeMixedLines(value) {
+    function normalizeMixedLines(value = {}) {
+      value = value || {};
       const valid = validMixedNumbers();
       let lines = [];
 
@@ -1159,6 +1171,38 @@
         .filter((line) => line.length);
 
       return normalized.length ? normalized : [[]];
+    }
+
+    function normalizeMixedSet(value = {}) {
+      value = value || {};
+      const mixedLines = normalizeMixedLines(value);
+      const currentMixedLine = Math.min(
+        Math.max(Number.isInteger(value.currentMixedLine) ? value.currentMixedLine : mixedLines.length - 1, 0),
+        mixedLines.length - 1
+      );
+
+      return { mixedLines, currentMixedLine };
+    }
+
+    function normalizeMixedSets(value = {}, mode = defaults.mode) {
+      value = value || {};
+      const savedSets = value.mixedSets && typeof value.mixedSets === "object" ? value.mixedSets : {};
+      const mixedSets = {
+        d1: normalizeMixedSet(savedSets.d1),
+        d2: normalizeMixedSet(savedSets.d2)
+      };
+      const hasSavedSets = Boolean(value.mixedSets && typeof value.mixedSets === "object");
+      const hasLegacyMixed =
+        Array.isArray(value.mixedLines) ||
+        Array.isArray(value.mixedNumbers) ||
+        Boolean(value.mixedDetail);
+
+      if (!hasSavedSets && hasLegacyMixed) {
+        const legacyKey = mixedModeKey(mode) || "d1";
+        mixedSets[legacyKey] = normalizeMixedSet(value);
+      }
+
+      return mixedSets;
     }
 
     function normalizeFeeders(value) {
@@ -1186,19 +1230,18 @@
     }
 
     function normalize(value) {
+      value = value || {};
       const mode = normalizeMode(value);
-      const mixedLines = normalizeMixedLines(value);
-      const currentMixedLine = Math.min(
-        Math.max(Number.isInteger(value.currentMixedLine) ? value.currentMixedLine : mixedLines.length - 1, 0),
-        mixedLines.length - 1
-      );
+      const mixedSets = normalizeMixedSets(value, mode);
+      const activeMixedSet = mixedSets[mixedModeKey(mode)] || normalizeMixedSet(value);
 
       return {
         mode,
         title: mode,
         mixed: value.mixed === "있음" ? "있음" : "없음",
-        mixedLines,
-        currentMixedLine,
+        mixedLines: activeMixedSet.mixedLines,
+        currentMixedLine: activeMixedSet.currentMixedLine,
+        mixedSets,
         places: Array.isArray(value.places) && value.places.length ? value.places : structuredClone(defaults.places),
         feeders: normalizeFeeders(value),
         memo: value.memo || "",
@@ -1265,13 +1308,38 @@
       els.adminModeBtn.classList.add("hidden");
     }
 
+    function saveActiveMixedSet(mode = state.mode) {
+      const key = mixedModeKey(mode);
+      if (!key) return;
+
+      state.mixedSets = state.mixedSets || structuredClone(defaults.mixedSets);
+      state.mixedSets[key] = {
+        mixedLines: state.mixedLines,
+        currentMixedLine: state.currentMixedLine
+      };
+    }
+
+    function activateMixedSetForMode(mode = state.mode) {
+      const key = mixedModeKey(mode);
+      if (!key) return;
+
+      state.mixedSets = state.mixedSets || structuredClone(defaults.mixedSets);
+      const activeSet = normalizeMixedSet(state.mixedSets[key]);
+      state.mixedSets[key] = activeSet;
+      state.mixedLines = activeSet.mixedLines;
+      state.currentMixedLine = activeSet.currentMixedLine;
+    }
+
     function sharedStatePayload() {
+      saveActiveMixedSet();
+
       return {
         mode: state.mode,
         title: state.title,
         mixed: state.mixed,
         mixedLines: state.mixedLines,
         currentMixedLine: state.currentMixedLine,
+        mixedSets: state.mixedSets,
         places: state.places,
         feeders: state.feeders,
         memo: state.memo
@@ -1279,6 +1347,7 @@
     }
 
     function saveState(options = {}) {
+      saveActiveMixedSet();
       localStorage.setItem(storageKey, JSON.stringify(state));
       if (options.remote === false || remoteHydrating || applyingRemoteState || !canWriteSharedState()) return;
       localWriteHoldUntil = Date.now() + 2500;
@@ -1369,7 +1438,7 @@
         if (data.updatedAt && data.updatedAt === remoteUpdatedAt) return;
 
         applyingRemoteState = true;
-        state = normalize({ ...state, ...data.state });
+        state = normalize(data.state);
         remoteUpdatedAt = data.updatedAt || remoteUpdatedAt;
         render();
         applyingRemoteState = false;
@@ -2254,10 +2323,11 @@
     els.modeToggle.addEventListener("click", (event) => {
       const button = event.target.closest("button[data-mode]");
       if (!button) return;
+      saveActiveMixedSet();
       state.mode = button.dataset.mode;
       state.title = state.mode;
-      renderToggle();
-      update();
+      activateMixedSetForMode();
+      render();
     });
 
     els.mixedGroups.addEventListener("click", (event) => {

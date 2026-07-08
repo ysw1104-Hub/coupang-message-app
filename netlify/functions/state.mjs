@@ -10,6 +10,10 @@ const defaultState = {
   mixed: "없음",
   mixedLines: [[]],
   currentMixedLine: 0,
+  mixedSets: {
+    d1: { mixedLines: [[]], currentMixedLine: 0 },
+    d2: { mixedLines: [[]], currentMixedLine: 0 }
+  },
   places: [
     { name: "여의", time: "" },
     { name: "미니", time: "" },
@@ -45,6 +49,7 @@ function sanitizeState(value) {
     mixed: value.mixed,
     mixedLines: value.mixedLines,
     currentMixedLine: value.currentMixedLine,
+    mixedSets: value.mixedSets,
     places: value.places,
     feeders: value.feeders,
     memo: value.memo
