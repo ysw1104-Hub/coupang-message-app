@@ -1,0 +1,1066 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#2563eb">
+  <title>사진 확인 보드</title>
+  <link rel="icon" href="icon-coupang-color.png" type="image/png">
+  <link rel="apple-touch-icon" href="icon-coupang-color.png">
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #eef2f7;
+      --panel: #ffffff;
+      --ink: #111827;
+      --muted: #64748b;
+      --line: #d8e2ee;
+      --blue: #2563eb;
+      --green: #16a34a;
+      --yellow: #eab308;
+      --red: #dc2626;
+      --purple: #9333ea;
+      --shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+    }
+
+    .app {
+      width: min(620px, 100%);
+      margin: 0 auto;
+      padding: 12px 10px 28px;
+    }
+
+    header,
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 10px;
+      margin-bottom: 10px;
+      padding: 12px;
+    }
+
+    h1,
+    h2,
+    p {
+      margin: 0;
+    }
+
+    h1 {
+      font-size: 21px;
+      line-height: 1.15;
+    }
+
+    h2 {
+      font-size: 17px;
+    }
+
+    .sub {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1.35;
+    }
+
+    .top-actions,
+    .toolbar,
+    .filters,
+    .summary {
+      display: grid;
+      gap: 8px;
+    }
+
+    .top-actions {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .btn,
+    .link-btn {
+      min-height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fff;
+      color: var(--ink);
+      padding: 0 10px;
+      cursor: pointer;
+      font-weight: 900;
+      text-align: center;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn.primary {
+      border-color: var(--blue);
+      background: var(--blue);
+      color: #fff;
+    }
+
+    .btn.green {
+      border-color: var(--green);
+      background: var(--green);
+      color: #fff;
+    }
+
+    .btn.danger {
+      border-color: #fecaca;
+      background: #fff1f2;
+      color: #b91c1c;
+    }
+
+    .panel {
+      margin-bottom: 10px;
+      padding: 12px;
+    }
+
+    .worker-panel {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 68px;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .worker-identity {
+      min-width: 0;
+      display: flex;
+      gap: 7px;
+      align-items: center;
+    }
+
+    .worker-label {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .worker-name {
+      min-width: 0;
+      overflow: hidden;
+      font-size: 15px;
+      font-weight: 950;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .name-modal,
+    .image-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: grid;
+      place-items: center;
+      padding: 18px;
+      background: rgba(15, 23, 42, 0.48);
+    }
+
+    .name-card {
+      width: min(360px, 100%);
+      padding: 18px;
+      border-radius: 10px;
+      background: #fff;
+      box-shadow: 0 20px 50px rgba(15, 23, 42, 0.22);
+    }
+
+    .name-card h2 {
+      margin-bottom: 8px;
+      font-size: 20px;
+    }
+
+    .name-card p {
+      margin-bottom: 12px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+      line-height: 1.4;
+    }
+
+    .name-card input,
+    .field input,
+    .field select,
+    .field textarea,
+    .filters input,
+    .filters select {
+      width: 100%;
+      min-height: 44px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fff;
+      padding: 0 11px;
+      font-weight: 800;
+    }
+
+    .field textarea {
+      min-height: 92px;
+      padding-top: 10px;
+      resize: vertical;
+      line-height: 1.45;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .field label {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .file-input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+    }
+
+    .file-label {
+      min-height: 48px;
+      border: 2px dashed #93c5fd;
+      border-radius: 8px;
+      background: #eff6ff;
+      color: #1d4ed8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-weight: 950;
+    }
+
+    .preview-grid,
+    .photo-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .preview-grid {
+      margin-top: 8px;
+    }
+
+    .preview-grid img,
+    .photo-grid img {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      object-fit: cover;
+      background: #f8fafc;
+    }
+
+    .toolbar {
+      grid-template-columns: minmax(0, 1fr) 88px;
+      margin-top: 10px;
+    }
+
+    .name-card .toolbar {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .name-card .toolbar.has-cancel {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .filters {
+      grid-template-columns: 1fr 118px 112px;
+    }
+
+    .summary {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      margin-top: 10px;
+    }
+
+    .summary-tile {
+      min-height: 58px;
+      border-radius: 7px;
+      background: #f8fafc;
+      display: grid;
+      align-content: center;
+      justify-items: center;
+      gap: 2px;
+      font-weight: 950;
+    }
+
+    .summary-tile span {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 900;
+    }
+
+    .records {
+      display: grid;
+      gap: 10px;
+    }
+
+    .empty {
+      padding: 28px 12px;
+      border: 1px dashed var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--muted);
+      text-align: center;
+      font-weight: 900;
+    }
+
+    .record {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .record-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: start;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      background: #f8fafc;
+    }
+
+    .record-meta {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 850;
+      line-height: 1.35;
+    }
+
+    .status-badge {
+      min-height: 30px;
+      border-radius: 999px;
+      padding: 0 10px;
+      display: inline-flex;
+      align-items: center;
+      font-size: 12px;
+      font-weight: 950;
+      white-space: nowrap;
+    }
+
+    .status-미확인 {
+      background: #fef3c7;
+      color: #854d0e;
+    }
+
+    .status-확인완료 {
+      background: #dbeafe;
+      color: #1d4ed8;
+    }
+
+    .status-처리완료 {
+      background: #dcfce7;
+      color: #15803d;
+    }
+
+    .status-배송X {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+
+    .status-보류 {
+      background: #f3e8ff;
+      color: #7e22ce;
+    }
+
+    .record-body {
+      display: grid;
+      gap: 10px;
+      padding: 10px 12px 12px;
+    }
+
+    .memo {
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 15px;
+      font-weight: 850;
+      line-height: 1.45;
+    }
+
+    .status-actions {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 5px;
+    }
+
+    .status-actions button {
+      min-height: 36px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 950;
+    }
+
+    .status-actions button.active {
+      border-color: var(--blue);
+      background: var(--blue);
+      color: #fff;
+    }
+
+    .record-actions {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 72px;
+      gap: 8px;
+    }
+
+    .image-card {
+      width: min(720px, 100%);
+      max-height: 92vh;
+      border-radius: 10px;
+      background: #fff;
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+    }
+
+    .image-card-head {
+      display: flex;
+      justify-content: flex-end;
+      padding: 8px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .image-card img {
+      width: 100%;
+      height: 100%;
+      max-height: calc(92vh - 58px);
+      object-fit: contain;
+      background: #0f172a;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .hint,
+    .name-error {
+      min-height: 18px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 900;
+      line-height: 1.35;
+    }
+
+    .name-error {
+      color: var(--red);
+      margin-top: 8px;
+    }
+
+    @media (max-width: 520px) {
+      .app {
+        padding: 10px 8px 24px;
+      }
+
+      .filters {
+        grid-template-columns: 1fr;
+      }
+
+      .summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .status-actions {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div>
+        <h1>사진 확인 보드</h1>
+        <p class="sub">사진을 올리고 상태를 바꿔가며 확인하는 공용 보드입니다.</p>
+      </div>
+      <div class="top-actions">
+        <a class="link-btn" href="/">상차</a>
+        <button class="btn" id="shareBtn" type="button">카톡 공유</button>
+        <button class="btn" id="refreshBtn" type="button">새로고침</button>
+      </div>
+    </header>
+
+    <section class="panel worker-panel" aria-label="작업자 이름">
+      <div class="worker-identity">
+        <span class="worker-label">작업자</span>
+        <strong class="worker-name" id="workerNameDisplay">이름 없음</strong>
+      </div>
+      <button class="btn" id="workerChangeBtn" type="button">변경</button>
+    </section>
+
+    <div class="name-modal hidden" id="workerNameModal" role="dialog" aria-modal="true" aria-labelledby="workerNameModalTitle">
+      <div class="name-card">
+        <h2 id="workerNameModalTitle">작업자 이름 입력</h2>
+        <p>처음 한 번만 입력하면 이 폰의 브라우저에 저장됩니다.</p>
+        <input id="workerNameInput" type="text" inputmode="text" autocomplete="name" maxlength="12" placeholder="예: 선웅">
+        <div class="toolbar" id="workerNameActions">
+          <button class="btn primary" id="workerNameConfirmBtn" type="button">확인</button>
+          <button class="btn hidden" id="workerNameCancelBtn" type="button">취소</button>
+        </div>
+        <div class="name-error" id="workerNameError"></div>
+      </div>
+    </div>
+
+    <section class="panel upload-panel">
+      <h2>사진 등록</h2>
+      <div class="field">
+        <label for="photoInput">사진</label>
+        <input class="file-input" id="photoInput" type="file" accept="image/*" multiple>
+        <label class="file-label" for="photoInput">사진 선택 / 촬영</label>
+        <div class="hint" id="photoHint">최대 4장까지 올릴 수 있습니다.</div>
+        <div class="preview-grid" id="previewGrid"></div>
+      </div>
+      <div class="field">
+        <label for="statusInput">상태</label>
+        <select id="statusInput">
+          <option>미확인</option>
+          <option>확인완료</option>
+          <option>처리완료</option>
+          <option>배송X</option>
+          <option>보류</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="memoInput">메모</label>
+        <textarea id="memoInput" placeholder="예: 송장2개 내용물 사탕? 14통지 / 오늘 배송X"></textarea>
+      </div>
+      <div class="toolbar">
+        <button class="btn primary" id="saveBtn" type="button">등록</button>
+        <button class="btn" id="clearBtn" type="button">비우기</button>
+      </div>
+      <div class="hint" id="saveHint"></div>
+    </section>
+
+    <section class="panel">
+      <h2>사진 목록</h2>
+      <div class="filters">
+        <input id="searchInput" type="search" placeholder="검색: 익산, 401, 배송X, 송장">
+        <select id="dayFilter">
+          <option value="today">오늘</option>
+          <option value="yesterday">어제</option>
+          <option value="week">7일</option>
+          <option value="all">전체</option>
+        </select>
+        <select id="statusFilter">
+          <option value="all">상태 전체</option>
+          <option>미확인</option>
+          <option>확인완료</option>
+          <option>처리완료</option>
+          <option>배송X</option>
+          <option>보류</option>
+        </select>
+      </div>
+      <div class="summary" id="summary"></div>
+    </section>
+
+    <section class="records" id="records"></section>
+  </main>
+
+  <div class="image-modal hidden" id="imageModal">
+    <div class="image-card">
+      <div class="image-card-head">
+        <button class="btn" id="imageCloseBtn" type="button">닫기</button>
+      </div>
+      <img id="largeImage" alt="확대 사진">
+    </div>
+  </div>
+
+  <script>
+    const apiUrl = "/api/photos";
+    const workerNameStorageKey = "coupang-loader-worker-name-v1";
+    const statuses = ["미확인", "확인완료", "처리완료", "배송X", "보류"];
+    const els = {
+      workerNameDisplay: document.querySelector("#workerNameDisplay"),
+      workerChangeBtn: document.querySelector("#workerChangeBtn"),
+      workerNameModal: document.querySelector("#workerNameModal"),
+      workerNameInput: document.querySelector("#workerNameInput"),
+      workerNameActions: document.querySelector("#workerNameActions"),
+      workerNameConfirmBtn: document.querySelector("#workerNameConfirmBtn"),
+      workerNameCancelBtn: document.querySelector("#workerNameCancelBtn"),
+      workerNameError: document.querySelector("#workerNameError"),
+      photoInput: document.querySelector("#photoInput"),
+      photoHint: document.querySelector("#photoHint"),
+      previewGrid: document.querySelector("#previewGrid"),
+      statusInput: document.querySelector("#statusInput"),
+      memoInput: document.querySelector("#memoInput"),
+      saveBtn: document.querySelector("#saveBtn"),
+      clearBtn: document.querySelector("#clearBtn"),
+      saveHint: document.querySelector("#saveHint"),
+      searchInput: document.querySelector("#searchInput"),
+      dayFilter: document.querySelector("#dayFilter"),
+      statusFilter: document.querySelector("#statusFilter"),
+      summary: document.querySelector("#summary"),
+      records: document.querySelector("#records"),
+      refreshBtn: document.querySelector("#refreshBtn"),
+      shareBtn: document.querySelector("#shareBtn"),
+      imageModal: document.querySelector("#imageModal"),
+      imageCloseBtn: document.querySelector("#imageCloseBtn"),
+      largeImage: document.querySelector("#largeImage")
+    };
+
+    let workerName = loadWorkerName();
+    let selectedImages = [];
+    let records = [];
+    let saving = false;
+
+    function sanitizeWorkerName(value) {
+      return String(value || "").trim().replace(/\s+/g, " ").slice(0, 12);
+    }
+
+    function loadWorkerName() {
+      try {
+        return sanitizeWorkerName(localStorage.getItem(workerNameStorageKey));
+      } catch {
+        return "";
+      }
+    }
+
+    function saveWorkerName() {
+      try {
+        if (workerName) localStorage.setItem(workerNameStorageKey, workerName);
+      } catch {}
+    }
+
+    function updateWorkerDisplay() {
+      els.workerNameDisplay.textContent = workerName || "이름 없음";
+    }
+
+    function openWorkerNameModal() {
+      els.workerNameInput.value = workerName;
+      els.workerNameError.textContent = "";
+      els.workerNameCancelBtn.classList.toggle("hidden", !workerName);
+      els.workerNameActions.classList.toggle("has-cancel", Boolean(workerName));
+      els.workerNameModal.classList.remove("hidden");
+      window.setTimeout(() => {
+        els.workerNameInput.focus();
+        els.workerNameInput.select();
+      }, 40);
+    }
+
+    function closeWorkerNameModal() {
+      if (!workerName) return;
+      els.workerNameModal.classList.add("hidden");
+    }
+
+    function confirmWorkerName() {
+      const nextName = sanitizeWorkerName(els.workerNameInput.value);
+      if (!nextName) {
+        els.workerNameError.textContent = "이름을 입력하세요.";
+        els.workerNameInput.focus();
+        return;
+      }
+
+      workerName = nextName;
+      saveWorkerName();
+      updateWorkerDisplay();
+      els.workerNameModal.classList.add("hidden");
+    }
+
+    function setHint(text) {
+      els.saveHint.textContent = text;
+      window.clearTimeout(setHint.timer);
+      setHint.timer = window.setTimeout(() => {
+        els.saveHint.textContent = "";
+      }, 2600);
+    }
+
+    function readFileAsDataUrl(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function loadImage(src) {
+      return new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = reject;
+        image.src = src;
+      });
+    }
+
+    async function compressImage(file) {
+      const original = await readFileAsDataUrl(file);
+      const image = await loadImage(original);
+      let maxSide = 1400;
+      let quality = 0.76;
+      let result = original;
+
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        const ratio = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
+        const width = Math.max(1, Math.round(image.naturalWidth * ratio));
+        const height = Math.max(1, Math.round(image.naturalHeight * ratio));
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext("2d");
+        context.drawImage(image, 0, 0, width, height);
+        result = canvas.toDataURL("image/jpeg", quality);
+        if (result.length <= 1_100_000) break;
+        maxSide -= 220;
+        quality -= 0.1;
+      }
+
+      return result;
+    }
+
+    function renderSelectedImages() {
+      els.previewGrid.replaceChildren();
+      selectedImages.forEach((image, index) => {
+        const img = document.createElement("img");
+        img.src = image;
+        img.alt = `등록할 사진 ${index + 1}`;
+        img.addEventListener("click", () => openLargeImage(image));
+        els.previewGrid.append(img);
+      });
+    }
+
+    async function handlePhotoInput() {
+      const files = [...els.photoInput.files].filter((file) => file.type.startsWith("image/")).slice(0, 4);
+      if (!files.length) return;
+
+      els.photoHint.textContent = "사진을 압축하는 중입니다.";
+      selectedImages = [];
+      renderSelectedImages();
+
+      for (const file of files) {
+        try {
+          selectedImages.push(await compressImage(file));
+          renderSelectedImages();
+        } catch {
+          els.photoHint.textContent = "일부 사진을 읽지 못했습니다.";
+        }
+      }
+
+      els.photoHint.textContent = `${selectedImages.length}장 선택됨`;
+    }
+
+    function clearForm() {
+      selectedImages = [];
+      els.photoInput.value = "";
+      els.memoInput.value = "";
+      els.statusInput.value = "미확인";
+      els.photoHint.textContent = "최대 4장까지 올릴 수 있습니다.";
+      renderSelectedImages();
+    }
+
+    async function postPhotos(payload) {
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "요청 실패");
+      return data;
+    }
+
+    async function saveRecord() {
+      if (saving) return;
+      if (!workerName) {
+        openWorkerNameModal();
+        return;
+      }
+      if (!selectedImages.length) {
+        setHint("사진을 먼저 선택하세요.");
+        return;
+      }
+
+      saving = true;
+      els.saveBtn.disabled = true;
+      setHint("등록하는 중입니다.");
+
+      try {
+        const data = await postPhotos({
+          action: "create",
+          status: els.statusInput.value,
+          memo: els.memoInput.value,
+          images: selectedImages,
+          workerName
+        });
+        records = Array.isArray(data.records) ? data.records : records;
+        clearForm();
+        render();
+        setHint("등록됐습니다.");
+      } catch (error) {
+        setHint(error.message || "등록하지 못했습니다.");
+      } finally {
+        saving = false;
+        els.saveBtn.disabled = false;
+      }
+    }
+
+    async function loadRecords() {
+      els.records.innerHTML = '<div class="empty">사진을 불러오는 중입니다.</div>';
+      try {
+        const response = await fetch(apiUrl, { cache: "no-store" });
+        const data = await response.json();
+        records = Array.isArray(data.records) ? data.records : [];
+        render();
+      } catch {
+        els.records.innerHTML = '<div class="empty">사진을 불러오지 못했습니다.</div>';
+      }
+    }
+
+    async function updateRecordStatus(id, status) {
+      try {
+        const data = await postPhotos({ action: "update", id, status, workerName });
+        records = Array.isArray(data.records) ? data.records : records;
+        render();
+      } catch {
+        setHint("상태를 바꾸지 못했습니다.");
+      }
+    }
+
+    async function deleteRecord(id) {
+      if (!confirm("이 사진 기록을 지울까요?")) return;
+
+      try {
+        const data = await postPhotos({ action: "delete", id, workerName });
+        records = Array.isArray(data.records) ? data.records : records;
+        render();
+      } catch {
+        setHint("삭제하지 못했습니다.");
+      }
+    }
+
+    function dateKey(date) {
+      return new Date(date).toLocaleDateString("sv-SE");
+    }
+
+    function isInDayFilter(record) {
+      const filter = els.dayFilter.value;
+      if (filter === "all") return true;
+
+      const created = new Date(record.createdAt);
+      const today = new Date();
+      const todayKey = dateKey(today);
+      const recordKey = dateKey(created);
+
+      if (filter === "today") return recordKey === todayKey;
+
+      const yesterday = new Date(today);
+      yesterday.setDate(today.getDate() - 1);
+      if (filter === "yesterday") return recordKey === dateKey(yesterday);
+
+      const weekAgo = new Date(today);
+      weekAgo.setDate(today.getDate() - 7);
+      return created >= weekAgo;
+    }
+
+    function filteredRecords() {
+      const query = els.searchInput.value.trim().toLowerCase();
+      const status = els.statusFilter.value;
+
+      return records.filter((record) => {
+        if (status !== "all" && record.status !== status) return false;
+        if (!isInDayFilter(record)) return false;
+        if (!query) return true;
+
+        const haystack = [
+          record.status,
+          record.memo,
+          record.workerName,
+          new Date(record.createdAt).toLocaleString("ko-KR")
+        ].join(" ").toLowerCase();
+        return haystack.includes(query);
+      });
+    }
+
+    function renderSummary(list) {
+      const counts = {
+        전체: list.length,
+        미확인: list.filter((item) => item.status === "미확인").length,
+        "배송X": list.filter((item) => item.status === "배송X").length,
+        보류: list.filter((item) => item.status === "보류").length
+      };
+
+      els.summary.replaceChildren(...Object.entries(counts).map(([label, count]) => {
+        const tile = document.createElement("div");
+        tile.className = "summary-tile";
+        tile.innerHTML = `<strong>${count}</strong><span>${label}</span>`;
+        return tile;
+      }));
+    }
+
+    function render() {
+      const list = filteredRecords();
+      renderSummary(list);
+      els.records.replaceChildren();
+
+      if (!list.length) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = "표시할 사진이 없습니다.";
+        els.records.append(empty);
+        return;
+      }
+
+      list.forEach((record) => els.records.append(makeRecordCard(record)));
+    }
+
+    function makeRecordCard(record) {
+      const card = document.createElement("article");
+      card.className = "record";
+
+      const created = new Date(record.createdAt);
+      const head = document.createElement("div");
+      head.className = "record-head";
+      const meta = document.createElement("div");
+      meta.className = "record-meta";
+      meta.textContent = `${created.toLocaleDateString("ko-KR")} ${created.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })} · ${record.workerName || "이름 없음"} · 사진 ${record.images?.length || 0}장`;
+      const badge = document.createElement("div");
+      badge.className = `status-badge status-${record.status}`;
+      badge.textContent = record.status;
+      head.append(meta, badge);
+
+      const body = document.createElement("div");
+      body.className = "record-body";
+
+      const memo = document.createElement("div");
+      memo.className = "memo";
+      memo.textContent = record.memo || "메모 없음";
+
+      const photoGrid = document.createElement("div");
+      photoGrid.className = "photo-grid";
+      (record.images || []).forEach((image, index) => {
+        const img = document.createElement("img");
+        img.src = image;
+        img.alt = `등록 사진 ${index + 1}`;
+        img.loading = "lazy";
+        img.addEventListener("click", () => openLargeImage(image));
+        photoGrid.append(img);
+      });
+
+      const statusActions = document.createElement("div");
+      statusActions.className = "status-actions";
+      statuses.forEach((status) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = status;
+        button.classList.toggle("active", record.status === status);
+        button.addEventListener("click", () => updateRecordStatus(record.id, status));
+        statusActions.append(button);
+      });
+
+      const actions = document.createElement("div");
+      actions.className = "record-actions";
+      const updateMemo = document.createElement("button");
+      updateMemo.className = "btn";
+      updateMemo.type = "button";
+      updateMemo.textContent = "메모 수정";
+      updateMemo.addEventListener("click", async () => {
+        const nextMemo = prompt("메모를 수정하세요.", record.memo || "");
+        if (nextMemo === null) return;
+        try {
+          const data = await postPhotos({ action: "update", id: record.id, memo: nextMemo, status: record.status, workerName });
+          records = Array.isArray(data.records) ? data.records : records;
+          render();
+        } catch {
+          setHint("메모를 수정하지 못했습니다.");
+        }
+      });
+
+      const remove = document.createElement("button");
+      remove.className = "btn danger";
+      remove.type = "button";
+      remove.textContent = "삭제";
+      remove.addEventListener("click", () => deleteRecord(record.id));
+      actions.append(updateMemo, remove);
+
+      body.append(memo, photoGrid, statusActions, actions);
+      card.append(head, body);
+      return card;
+    }
+
+    function openLargeImage(src) {
+      els.largeImage.src = src;
+      els.imageModal.classList.remove("hidden");
+    }
+
+    function closeLargeImage() {
+      els.imageModal.classList.add("hidden");
+      els.largeImage.removeAttribute("src");
+    }
+
+    async function shareBoard() {
+      const list = filteredRecords();
+      const countByStatus = statuses
+        .map((status) => `${status} ${list.filter((record) => record.status === status).length}`)
+        .join(" / ");
+      const text = `사진 확인 ${list.length}건\n${countByStatus}\n${location.origin}${location.pathname}`;
+
+      if (navigator.share) {
+        try {
+          await navigator.share({ text });
+          return;
+        } catch (error) {
+          if (error.name === "AbortError") return;
+        }
+      }
+
+      await navigator.clipboard.writeText(text);
+      setHint("공유 문구를 복사했습니다.");
+    }
+
+    updateWorkerDisplay();
+    if (!workerName) openWorkerNameModal();
+    els.workerChangeBtn.addEventListener("click", openWorkerNameModal);
+    els.workerNameConfirmBtn.addEventListener("click", confirmWorkerName);
+    els.workerNameCancelBtn.addEventListener("click", closeWorkerNameModal);
+    els.workerNameInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        confirmWorkerName();
+      }
+    });
+
+    els.photoInput.addEventListener("change", handlePhotoInput);
+    els.saveBtn.addEventListener("click", saveRecord);
+    els.clearBtn.addEventListener("click", clearForm);
+    els.refreshBtn.addEventListener("click", loadRecords);
+    els.shareBtn.addEventListener("click", shareBoard);
+    els.searchInput.addEventListener("input", render);
+    els.dayFilter.addEventListener("change", render);
+    els.statusFilter.addEventListener("change", render);
+    els.imageCloseBtn.addEventListener("click", closeLargeImage);
+    els.imageModal.addEventListener("click", (event) => {
+      if (event.target === els.imageModal) closeLargeImage();
+    });
+
+    loadRecords();
+  </script>
+</body>
+</html>
