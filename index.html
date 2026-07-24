@@ -865,7 +865,34 @@
       margin-top: 8px;
     }
 
-    .number-grid button {
+    .number-route-grid {
+      display: grid;
+      gap: 5px;
+      margin-top: 8px;
+    }
+
+    .number-route-row {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 5px;
+      padding: 4px;
+      border: 1px solid #e9d5ff;
+      border-radius: 7px;
+      background: #faf5ff;
+    }
+
+    .number-route-row.route-yellow {
+      border-color: #fde68a;
+      background: #fef3c7;
+    }
+
+    .number-route-row.route-soft {
+      border-color: #e2e8f0;
+      background: #f8fafc;
+    }
+
+    .number-grid button,
+    .number-route-grid button {
       min-height: 44px;
       border: 1px solid var(--line);
       border-radius: 6px;
@@ -875,13 +902,15 @@
       font-weight: 800;
     }
 
-    .number-grid button.active {
+    .number-grid button.active,
+    .number-route-grid button.active {
       border-color: var(--accent);
       background: var(--accent);
       color: #fff;
     }
 
-    .number-grid button.current {
+    .number-grid button.current,
+    .number-route-grid button.current {
       box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.55);
     }
 
@@ -903,17 +932,11 @@
       color: #1f2937;
     }
 
-    .number-grid button.number-400.active {
+    .number-grid button.number-400.active,
+    .number-route-grid button.number-400.active {
       border-color: #7e22ce;
       background: #9333ea;
       color: #fff;
-    }
-
-    .number-grid-divider {
-      grid-column: 1 / -1;
-      height: 1px;
-      border-top: 1px dashed #d8e2ee;
-      margin: 4px 0 0;
     }
 
     .btn {
@@ -1436,6 +1459,16 @@
       { label: "300", start: 301, end: 314 },
       { label: "400", start: 401, end: 424 }
     ];
+    const mixedRouteLayouts = {
+      400: [
+        { className: "route-soft", cells: [{ number: 401, col: 1 }, { number: 402, col: 2 }, { number: 403, col: 3 }, { number: 404, col: 4 }, { number: 412, col: 5 }] },
+        { className: "", cells: [{ number: 405, col: 2 }, { number: 406, col: 3 }, { number: 407, col: 4 }, { number: 408, col: 5 }] },
+        { className: "route-soft", cells: [{ number: 409, col: 2 }, { number: 410, col: 3 }, { number: 411, col: 4 }] },
+        { className: "", cells: [{ number: 413, col: 1 }, { number: 414, col: 2 }, { number: 415, col: 3 }, { number: 416, col: 4 }, { number: 417, col: 5 }] },
+        { className: "route-soft", cells: [{ number: 418, col: 2 }, { number: 419, col: 3 }, { number: 420, col: 4 }] },
+        { className: "route-yellow", cells: [{ number: 421, col: 1 }, { number: 422, col: 2 }, { number: 423, col: 4 }, { number: 424, col: 5 }] }
+      ]
+    };
     const placeColorClasses = ["place-blue", "place-green", "place-red", "place-yellow", "place-purple"];
     const placeColorDots = ["🟦", "🟩", "🟥", "🟨", "🟪"];
     const maxMixedLineCount = 10;
@@ -1463,6 +1496,22 @@
       const numbers = [];
       for (let number = range.start; number <= range.end; number += 1) numbers.push(number);
       return numbers;
+    }
+
+    function routeGroupIndex(number) {
+      const routeRows = mixedRouteLayouts[400] || [];
+      return routeRows.findIndex((row) => row.cells.some((cell) => cell.number === Number(number)));
+    }
+
+    function canAddMixedNumber(currentLine, number) {
+      const selectedRouteIndex = routeGroupIndex(number);
+      if (selectedRouteIndex === -1) return true;
+
+      const selected400Routes = currentLine
+        .map(routeGroupIndex)
+        .filter((index) => index !== -1);
+
+      return !selected400Routes.length || selected400Routes.every((index) => index === selectedRouteIndex);
     }
 
     function normalizeMode(value) {
@@ -2748,6 +2797,37 @@
       return row;
     }
 
+    function makeNumberButton(number, rangeLabel, currentLine) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = String(number);
+      button.dataset.number = String(number);
+      button.classList.add(`number-${rangeLabel}`);
+      button.classList.toggle("active", currentLine.has(number));
+      button.classList.toggle("current", currentLine.has(number));
+      return button;
+    }
+
+    function makeRouteGrid(range, currentLine) {
+      const grid = document.createElement("div");
+      grid.className = "number-route-grid";
+
+      mixedRouteLayouts[range.label].forEach((route) => {
+        const row = document.createElement("div");
+        row.className = ["number-route-row", route.className].filter(Boolean).join(" ");
+
+        route.cells.forEach((cell) => {
+          const button = makeNumberButton(cell.number, range.label, currentLine);
+          button.style.gridColumn = String(cell.col);
+          row.append(button);
+        });
+
+        grid.append(row);
+      });
+
+      return grid;
+    }
+
     function makeMixedGroup(range) {
       const section = document.createElement("div");
       section.className = `mixed-range-group mixed-range-${range.label}`;
@@ -2776,24 +2856,15 @@
 
       title.append(heading, actions);
 
-      const grid = document.createElement("div");
-      grid.className = "number-grid";
+      const grid = mixedRouteLayouts[range.label]
+        ? makeRouteGrid(range, currentLine)
+        : document.createElement("div");
 
-      for (let number of rangeNumbers(range)) {
-        if (range.label === "400" && number === 417) {
-          const divider = document.createElement("div");
-          divider.className = "number-grid-divider";
-          grid.append(divider);
+      if (!mixedRouteLayouts[range.label]) {
+        grid.className = "number-grid";
+        for (let number of rangeNumbers(range)) {
+          grid.append(makeNumberButton(number, range.label, currentLine));
         }
-
-        const button = document.createElement("button");
-        button.type = "button";
-        button.textContent = String(number);
-        button.dataset.number = String(number);
-        button.classList.add(`number-${range.label}`);
-        button.classList.toggle("active", currentLine.has(number));
-        button.classList.toggle("current", currentLine.has(number));
-        grid.append(button);
       }
 
       section.append(title, grid);
@@ -2969,6 +3040,11 @@
         if (currentLine.has(number)) {
           currentLine.delete(number);
         } else {
+          if (!canAddMixedNumber([...currentLine], number)) {
+            flash("400번대는 같은 노선끼리만 혼적할 수 있습니다.");
+            return;
+          }
+
           if (currentLine.size >= maxMixedLineCount) {
             flash("한 줄에 혼적 번호는 최대 10개까지 선택할 수 있습니다.");
             return;
